@@ -1,0 +1,82 @@
+[
+    {
+        "id": 1,
+        "name": "Classic Veg Sandwich",
+        "title": "Fresh vegetable sandwich with mint chutney",
+        "price": 35,
+        "category": "under 40 rupee",
+        "image": "https://images.pexels.com/photos/3761662/pexels-photo-3761662.jpeg?auto=compress&cs=tinysrgb&w=500"
+    },
+    {
+        "id": 2,
+        "name": "Grilled Cheese",
+        "title": "Melted cheese between toasted bread slices",
+        "price": 40,
+        "category": "under 40 rupee",
+        "image": "https://images.pexels.com/photos/3761662/pexels-photo-3761662.jpeg?auto=compress&cs=tinysrgb&w=500"
+    },
+    {
+        "id": 3,
+        "name": "Chicken Mayo",
+        "title": "Shredded chicken with mayonnaise and veggies",
+        "price": 55,
+        "category": "premium sandwiches",
+        "image": "https://images.pexels.com/photos/3761662/pexels-photo-3761662.jpeg?auto=compress&cs=tinysrgb&w=500"
+    },
+    {
+        "id": 4,
+        "name": "Egg Salad Sandwich",
+        "title": "Boiled eggs with mayo and seasoning",
+        "price": 45,
+        "category": "egg specials",
+        "image": "https://images.pexels.com/photos/3761662/pexels-photo-3761662.jpeg?auto=compress&cs=tinysrgb&w=500"
+    },
+    {
+        "id": 5,
+        "name": "Paneer Tikka",
+        "title": "Grilled cottage cheese with tikka masala",
+        "price": 50,
+        "category": "vegetarian specials",
+        "image": "https://images.pexels.com/photos/3761662/pexels-photo-3761662.jpeg?auto=compress&cs=tinysrgb&w=500"
+    },
+    {
+        "id": 6,
+        "name": "Club Sandwich",
+        "title": "Triple decker with chicken, egg and veggies",
+        "price": 65,
+        "category": "premium sandwiches",
+        "image": "https://images.pexels.com/photos/3761662/pexels-photo-3761662.jpeg?auto=compress&cs=tinysrgb&w=500"
+    },
+    {
+        "id": 7,
+        "name": "Bombay Masala",
+        "title": "Spicy potato filling with chutneys",
+        "price": 30,
+        "category": "under 40 rupee",
+        "image": "https://images.pexels.com/photos/3761662/pexels-photo-3761662.jpeg?auto=compress&cs=tinysrgb&w=500"
+    },
+    {
+        "id": 8,
+        "name": "Tuna Salad",
+        "title": "Tuna fish with mayo and celery",
+        "price": 70,
+        "category": "premium sandwiches",
+        "image": "https://images.pexels.com/photos/3761662/pexels-photo-3761662.jpeg?auto=compress&cs=tinysrgb&w=500"
+    },
+    {
+        "id": 9,
+        "name": "Aloo Grilled",
+        "title": "Spiced potato filling grilled to perfection",
+        "price": 35,
+        "category": "under 40 rupee",
+        "image": "https://images.pexels.com/photos/3761662/pexels-photo-3761662.jpeg?auto=compress&cs=tinysrgb&w=500"
+    },
+    {
+        "id": 10,
+        "name": "Chicken Tikka",
+        "title": "Grilled chicken tikka pieces with onions",
+        "price": 60,
+        "category": "non-veg specials",
+        "image": "https://images.pexels.com/photos/3761662/pexels-photo-3761662.jpeg?auto=compress&cs=tinysrgb&w=500"
+    }
+]
