@@ -3,7 +3,7 @@ import signature from '../assets/sandwich.png';
 
 const AboutPage = () => {
   return (
-    <div className="font-sans text-gray-800">
+    <div className="font-sans text-gray-800 dark:bg-slate-900 dark:text-white">
       {/* Hero Section */}
       <section className="relative h-96 flex items-center justify-center bg-[url('../assets/about-hero-bg.jpg')] bg-cover bg-center">
         <div className="absolute inset-0 bg-black/50"></div>

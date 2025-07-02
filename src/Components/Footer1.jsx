@@ -4,6 +4,7 @@ import RouteLinks from './RouteLinks'
 const Footer1 = () => {
     return (
         <>
+            
             <div className='pt-5 bottom-0'>
                 <hr className='mt-3' />
                 <footer className="footer footer-horizontal footer-center text-base-content rounded p-10">

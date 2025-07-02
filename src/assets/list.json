@@ -14,11 +14,12 @@
         "price": 40,
         "category": "under 40 rupee",
         "image": "https://images.pexels.com/photos/3761662/pexels-photo-3761662.jpeg?auto=compress&cs=tinysrgb&w=500"
+
     },
     {
         "id": 3,
         "name": "Chicken Mayo",
-        "title": "Shredded chicken with mayonnaise and veggies",
+        "title": "chicken with mayonnaise and veggies",
         "price": 55,
         "category": "premium sandwiches",
         "image": "https://images.pexels.com/photos/3761662/pexels-photo-3761662.jpeg?auto=compress&cs=tinysrgb&w=500"

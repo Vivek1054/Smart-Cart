@@ -9,7 +9,7 @@ const Home = () => {
   return (
     <>
       {/* <Header/> */}
-      <div className='max-w-screen-2xl container mx-auto md:px-20 px-4'>
+      <div className='max-w-screen-2xl container mx-auto md:px-20 px-4 dark:bg-slate-900 dark:text-white'>
 
         <Banner />
         <SandwichCard />
@@ -20,3 +20,5 @@ const Home = () => {
 }
 
 export default Home
+
+

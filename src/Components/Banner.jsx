@@ -17,20 +17,9 @@ const Banner = () => {
                             Lorem, ipsum dolor sit amet consectetur adipisicing elit. Alias magnam velit facere
                             ducimus ut consequatur rerum illum distinctio sint perspiciatis quidem quibusdam sit
                             tenetur blanditiis, voluptatibus qui? Aliquid, nesciunt voluptates.
-                            Lorem, ipsum dolor sit amet consectetur adipisicing elit. Alias magnam velit facere
-                            ducimus ut consequatur rerum illum distinctio sint perspiciatis quidem quibusdam sit
-                            tenetur blanditiis, voluptatibus qui? Aliquid, nesciunt voluptates.
-                            Lorem, ipsum dolor sit amet consectetur adipisicing elit. Alias magnam velit facere
-                            ducimus ut consequatur rerum illum distinctio sint perspiciatis quidem quibusdam sit
-                            tenetur blanditiis, voluptatibus qui? Aliquid, nesciunt voluptates.
-                            Lorem, ipsum dolor sit amet consectetur adipisicing elit. Alias magnam velit facere
-                            ducimus ut consequatur rerum illum distinctio sint perspiciatis quidem quibusdam sit
-                            tenetur blanditiis, voluptatibus qui? Aliquid, nesciunt voluptates.
-                            Lorem, ipsum dolor sit amet consectetur adipisicing elit. Alias magnam velit facere
-                            ducimus ut consequatur rerum illum distinctio sint perspiciatis quidem quibusdam sit
-                            tenetur blanditiis, voluptatibus qui? Aliquid, nesciunt voluptates.
+                        
                         </p>
-                        <label className="input input-bordered flex items-center gap-2">
+                        {/* <label className="input input-bordered flex items-center gap-2">
                             <svg
                                 xmlns="http://www.w3.org/2000/svg"
                                 viewBox="0 0 16 16"
@@ -42,7 +31,7 @@ const Banner = () => {
                                     d="M15 6.954 8.978 9.86a2.25 2.25 0 0 1-1.956 0L1 6.954V11.5A1.5 1.5 0 0 0 2.5 13h11a1.5 1.5 0 0 0 1.5-1.5V6.954Z" />
                             </svg>
                             <input type="text" className="grow" placeholder="Email" />
-                        </label>
+                        </label> */}
                     </div>
                 </div>
                 <div className='w-full order-1 mt-20 md:w-1/2'>

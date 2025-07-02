@@ -4,11 +4,16 @@ import './index.css'
 import App from './App.jsx'
 import { BrowserRouter } from 'react-router-dom'
 import Home from './Pages/Home.jsx'
+import App1 from './App1.jsx'
 
 
 createRoot(document.getElementById('root')).render(
   <BrowserRouter>
-    <App />
+    <div className='dark:bg-slate-900 dark:text-white'>
+
+      <App />
+    </div>
+    {/* <App1 /> */}
     {/* <Home/> */}
   </BrowserRouter>
 )

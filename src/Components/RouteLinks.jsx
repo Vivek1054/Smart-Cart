@@ -13,6 +13,8 @@ const RouteLinks = () => {
             <Link className="link link-hover" to='/about'>About</Link>
             <Link className="link link-hover" to='/contactus'>Contact</Link>
             <Link className="link link-hover" to='/menu'>Menu</Link>
+            <Link className="link link-hover hidden" to='/login'>Menu</Link>
+            
             {/* <Link className="link link-hover" to='/Ex'>EX</Link> */}
         </>
     )

@@ -1,12 +1,30 @@
-import React from 'react'
-import Navbar from './Navbar'
+// import React from 'react'
+// import Navbar from './Navbar'
 
-const Header = () => {
+
+// const Header = () => {
+//   return (
+//     <>
+//       <Navbar/>
+
+//     </>
+//   )
+// }
+
+// export default Header
+
+import React from 'react';
+import Navbar from './Navbar';
+import Navbar1 from './Navbar1';
+
+const Header = ({ onLoginClick }) => {
   return (
     <>
-      <Navbar/>
+      {/* <Navbar onLoginClick={onLoginClick} /> */}
+      <Navbar1 onLoginClick={onLoginClick} />
+    
     </>
-  )
-}
+  );
+};
 
-export default Header
+export default Header;
