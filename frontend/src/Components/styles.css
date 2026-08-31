@@ -1,0 +1,23 @@
+a.active{
+    color:red;
+}
+
+.smartcart-slider .slick-dots {
+    bottom: -34px;
+}
+
+.smartcart-slider .slick-dots li button:before {
+    font-size: 8px;
+    color: #eda072;
+    opacity: 0.5;
+}
+
+.smartcart-slider .slick-dots li.slick-active button:before {
+    color: #c1571f;
+    opacity: 1;
+}
+
+.smartcart-slider .slick-prev:before,
+.smartcart-slider .slick-next:before {
+    color: #c1571f;
+}
