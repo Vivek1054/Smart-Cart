@@ -7,7 +7,7 @@ import Input from '../../ui/Input';
 import Button from '../../ui/Button';
 
 const AdminLogin = () => {
-  const { isAdminAuthenticated, login, demoCredentials } = useAdminAuth();
+  const { isAdminAuthenticated, loading: authLoading, login } = useAdminAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -16,19 +16,26 @@ const AdminLogin = () => {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-ink-900">
+        <div className="h-9 w-9 rounded-full border-2 border-brand-500 border-t-transparent animate-spin" />
+      </div>
+    );
+  }
+
   if (isAdminAuthenticated) {
     return <Navigate to={location.state?.from || '/admin/dashboard'} replace />;
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setErrors({});
     setLoading(true);
-    setTimeout(() => {
-      const result = login(form);
-      setLoading(false);
-      if (result.ok) navigate('/admin/dashboard');
-      else setErrors({ form: result.error });
-    }, 500);
+    const result = await login(form);
+    setLoading(false);
+    if (result.ok) navigate('/admin/dashboard');
+    else setErrors({ form: result.error });
   };
 
   return (
@@ -101,7 +108,7 @@ const AdminLogin = () => {
             label="Email"
             type="email"
             icon={<FaEnvelope size={13} />}
-            placeholder="admin@smartcart.com"
+            placeholder="admin email"
             value={form.email}
             onChange={(e) => setForm({ ...form, email: e.target.value })}
             containerClassName="mb-4"
@@ -128,10 +135,6 @@ const AdminLogin = () => {
           <Button type="submit" loading={loading} className="w-full mt-6" size="lg">
             Login to Dashboard
           </Button>
-
-          <p className="mt-6 text-center text-xs text-ink-800/40 dark:text-white/40">
-            Demo credentials: <span className="font-mono">{demoCredentials.email} / {demoCredentials.password}</span>
-          </p>
 
           <Link to="/" className="block mt-4 text-center text-sm text-ink-800/50 dark:text-white/50 hover:text-ink-800/80 dark:hover:text-white/80 transition">
             ← Back to Store

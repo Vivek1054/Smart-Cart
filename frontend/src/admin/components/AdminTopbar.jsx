@@ -13,7 +13,14 @@ const AdminTopbar = ({ onOpenMobileSidebar, title }) => {
   const [profileOpen, setProfileOpen] = useState(false);
   const notifRef = useRef(null);
   const profileRef = useRef(null);
-  const notifications = getAdminNotifications().slice(0, 6);
+  const [notifications, setNotifications] = useState([]);
+
+  const loadNotifications = () => {
+    getAdminNotifications()
+      .then((list) => setNotifications(list.slice(0, 6)))
+      .catch((e) => console.error('[notifications]', e));
+  };
+  useEffect(() => { loadNotifications(); }, []);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -50,7 +57,7 @@ const AdminTopbar = ({ onOpenMobileSidebar, title }) => {
 
         <div ref={notifRef} className="relative">
           <button
-            onClick={() => setNotifOpen((v) => !v)}
+            onClick={() => { if (!notifOpen) loadNotifications(); setNotifOpen((v) => !v); }}
             className="relative flex h-9 w-9 items-center justify-center rounded-full text-ink-800/70 dark:text-white/70 hover:bg-ink-800/5 dark:hover:bg-white/10 transition"
             aria-label="Notifications"
           >

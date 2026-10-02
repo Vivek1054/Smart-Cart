@@ -9,6 +9,7 @@ import ScrollReveal from '../ui/ScrollReveal'
 import Button from '../ui/Button'
 import { getBestSellers, getTrending, getFlashDeals, getCategories, getAllProducts } from '../data/products'
 import { getPromoBanner } from '../data/promotions'
+import { useCatalogVersion } from '../context/CatalogContext'
 
 const WHY_SMARTCART = [
   { icon: FaLeaf, title: 'Fresh Ingredients', desc: 'Sourced locally and prepped same-day, never frozen.' },
@@ -18,6 +19,7 @@ const WHY_SMARTCART = [
 ];
 
 const Home = () => {
+  useCatalogVersion();
   const products = getAllProducts();
   const categories = getCategories().filter((c) => c !== 'All');
   const bestSellers = getBestSellers();

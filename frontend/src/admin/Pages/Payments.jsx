@@ -4,20 +4,26 @@ import KpiCard from '../components/KpiCard';
 import DataTable from '../components/DataTable';
 import StatusBadge from '../components/StatusBadge';
 import { getPayments } from '../../data/adminData';
+import { useAsync } from '../../hooks/useAsync';
+import AsyncBoundary from '../../ui/AsyncBoundary';
 
 const Payments = () => {
-  const payments = useMemo(() => getPayments(), []);
+  const state = useAsync(getPayments, []);
+  return <AsyncBoundary state={state}>{(payments) => <PaymentsView payments={payments} />}</AsyncBoundary>;
+};
+
+const PaymentsView = ({ payments }) => {
 
   const counts = useMemo(() => ({
     total: payments.length,
-    success: payments.filter((p) => p.status === 'Success').length,
+    success: payments.filter((p) => p.status === 'Paid').length,
     pending: payments.filter((p) => p.status === 'Pending').length,
     failed: payments.filter((p) => p.status === 'Failed').length,
   }), [payments]);
 
   const columns = [
     {
-      key: 'id', label: 'Transaction ID',
+      key: 'id', label: 'Payment Ref',
       render: (p) => <span className="font-mono text-xs text-ink-800/70 dark:text-white/70">{p.id}</span>,
     },
     {
@@ -44,7 +50,7 @@ const Payments = () => {
     <div className="space-y-6">
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <KpiCard icon={FaCreditCard} label="Total Payments" value={counts.total} tone="brand" />
-        <KpiCard icon={FaCheckCircle} label="Success" value={counts.success} tone="green" />
+        <KpiCard icon={FaCheckCircle} label="Paid" value={counts.success} tone="green" />
         <KpiCard icon={FaClock} label="Pending" value={counts.pending} tone="amber" />
         <KpiCard icon={FaTimesCircle} label="Failed" value={counts.failed} tone="blue" />
       </div>

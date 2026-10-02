@@ -11,10 +11,14 @@ const CouponInput = () => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const suggestions = getActiveCoupons().slice(0, 3);
 
-  const handleApply = (e) => {
+  const [checking, setChecking] = useState(false);
+
+  const handleApply = async (e) => {
     e.preventDefault();
-    if (!code.trim()) return;
-    const result = applyCoupon(code);
+    if (!code.trim() || checking) return;
+    setChecking(true);
+    const result = await applyCoupon(code);
+    setChecking(false);
     if (!result.ok) {
       setError(result.error);
     } else {

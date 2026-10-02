@@ -1,11 +1,30 @@
-import React, { useMemo } from 'react';
-import { FaInfoCircle } from 'react-icons/fa';
+import React from 'react';
 import DataTable from '../components/DataTable';
 import StatusBadge from '../components/StatusBadge';
-import { getReturns } from '../../data/adminData';
+import { getReturns, updateReturnStatus } from '../../data/adminData';
+import { useToast } from '../../context/ToastContext';
+import { useAsync } from '../../hooks/useAsync';
+import AsyncBoundary from '../../ui/AsyncBoundary';
+
+const RETURN_STATUSES = ['Requested', 'Approved', 'Rejected', 'Completed'];
 
 const Returns = () => {
-  const returns = useMemo(() => getReturns(), []);
+  const state = useAsync(getReturns, []);
+  return <AsyncBoundary state={state}>{(returns) => <ReturnsView returns={returns} reload={state.reload} />}</AsyncBoundary>;
+};
+
+const ReturnsView = ({ returns, reload }) => {
+  const { notify } = useToast();
+
+  const handleStatus = async (r, status) => {
+    try {
+      await updateReturnStatus(r.dbId, status);
+      notify(`Return marked ${status}`, 'success', 1800);
+      reload();
+    } catch (err) {
+      notify(err.message, 'error');
+    }
+  };
 
   const columns = [
     {
@@ -31,15 +50,23 @@ const Returns = () => {
       render: (r) => new Date(r.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
     },
     { key: 'status', label: 'Status', render: (r) => <StatusBadge status={r.status} /> },
+    {
+      key: 'actions', label: 'Update',
+      render: (r) => (
+        <select
+          value={r.status}
+          onChange={(e) => handleStatus(r, e.target.value)}
+          aria-label={`Update status of ${r.id}`}
+          className="rounded-lg border border-ink-800/10 dark:border-white/15 bg-cream-50 dark:bg-white/5 px-2.5 py-1.5 text-xs outline-none focus:border-brand-400"
+        >
+          {RETURN_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+        </select>
+      ),
+    },
   ];
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl bg-cream-100 dark:bg-white/5 px-4 py-3 text-sm text-ink-800/60 dark:text-white/60 flex items-start gap-2.5">
-        <FaInfoCircle className="mt-0.5 shrink-0 text-ink-800/40 dark:text-white/40" size={14} />
-        <span>These are demo return requests for illustration — there's no backend here to actually process refunds.</span>
-      </div>
-
       <DataTable
         columns={columns}
         data={returns}

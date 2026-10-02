@@ -3,15 +3,19 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { FaEye } from 'react-icons/fa';
 import DataTable from '../components/DataTable';
 import StatusBadge from '../components/StatusBadge';
-import Badge from '../../ui/Badge';
 import { getAllOrdersForAdmin } from '../../data/adminData';
 import { ORDER_STATUSES } from '../../data/orders';
+import { useAsync } from '../../hooks/useAsync';
+import AsyncBoundary from '../../ui/AsyncBoundary';
 
 const Orders = () => {
+  const state = useAsync(getAllOrdersForAdmin, []);
+  return <AsyncBoundary state={state}>{(orders) => <OrdersView orders={orders} />}</AsyncBoundary>;
+};
+
+const OrdersView = ({ orders }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeStatus = searchParams.get('status') || '';
-
-  const orders = useMemo(() => getAllOrdersForAdmin(), []);
 
   const filtered = useMemo(() => {
     const list = activeStatus ? orders.filter((o) => o.status === activeStatus) : orders;
@@ -32,10 +36,7 @@ const Orders = () => {
     {
       key: 'id', label: 'Order ID',
       render: (o) => (
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-xs text-ink-800/70 dark:text-white/70">{o.id}</span>
-          {!o.synthetic && <Badge tone="brand">Live</Badge>}
-        </div>
+        <span className="font-mono text-xs text-ink-800/70 dark:text-white/70">{o.id}</span>
       ),
     },
     {

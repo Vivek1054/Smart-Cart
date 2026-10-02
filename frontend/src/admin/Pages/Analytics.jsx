@@ -4,37 +4,28 @@ import { FaRupeeSign, FaShoppingBag, FaChartLine, FaCalendarAlt } from 'react-ic
 import KpiCard from '../components/KpiCard';
 import LineChart from '../../ui/charts/LineChart';
 import BarChart from '../../ui/charts/BarChart';
-import { getMonthlyRevenue, getRevenueTrend, getAllOrdersForAdmin } from '../../data/adminData';
-import { getAllProducts } from '../../data/products';
+import { useAsync } from '../../hooks/useAsync';
+import AsyncBoundary from '../../ui/AsyncBoundary';
+import { api } from '../../services/api';
 
 const Analytics = () => {
-  const monthly = getMonthlyRevenue(12);
-  const trend = getRevenueTrend(30);
-  const orders = getAllOrdersForAdmin();
-  const products = getAllProducts();
+  const state = useAsync(() => api.get('/admin/dashboard'), []);
+  return <AsyncBoundary state={state}>{(data) => <AnalyticsView data={data} />}</AsyncBoundary>;
+};
 
-  const totalRevenue = monthly.reduce((s, m) => s + m.revenue, 0);
-  const totalOrders = orders.length;
-  const avgOrderValue = totalOrders ? Math.round(totalRevenue / totalOrders) : 0;
+const AnalyticsView = ({ data }) => {
+  const monthly = data.revenueByMonth.map((m) => ({ month: m.label, revenue: m.revenue }));
+  const trend = data.revenueByDay;
+
+  const totalRevenue = data.totals.revenue;
+  const totalOrders = data.totals.orders;
+  const avgOrderValue = data.totals.avgOrderValue;
   const thisMonthRevenue = monthly[monthly.length - 1]?.revenue || 0;
 
   const topProducts = useMemo(() => {
-    const qtyById = {};
-    orders.forEach((o) => {
-      (o.items || []).forEach((it) => {
-        const key = it.id ?? it.name;
-        qtyById[key] = (qtyById[key] || 0) + (it.qty || 0);
-      });
-    });
-
-    const ranked = products
-      .map((p) => ({ id: p.id, name: p.name, units: qtyById[p.id] || 0 }))
-      .sort((a, b) => b.units - a.units)
-      .slice(0, 5);
-
-    const max = Math.max(ranked[0]?.units || 0, 1);
-    return ranked.map((p) => ({ ...p, pct: Math.max((p.units / max) * 100, p.units > 0 ? 4 : 0) }));
-  }, [orders, products]);
+    const max = Math.max(data.topProducts[0]?.units || 0, 1);
+    return data.topProducts.map((p) => ({ id: p.name, name: p.name, units: p.units, pct: Math.max((p.units / max) * 100, p.units > 0 ? 4 : 0) }));
+  }, [data.topProducts]);
 
   return (
     <motion.div

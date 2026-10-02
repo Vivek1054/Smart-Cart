@@ -3,16 +3,25 @@ import { Link, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FaArrowLeft, FaBoxOpen, FaMapMarkerAlt, FaUser, FaCheck } from 'react-icons/fa';
 import StatusBadge from '../components/StatusBadge';
-import { getAllOrdersForAdmin } from '../../data/adminData';
+import { getOrderForAdmin } from '../../data/adminData';
 import { updateOrderStatus, ORDER_STATUSES, TRACKING_STEPS } from '../../data/orders';
+import { useToast } from '../../context/ToastContext';
+import { useAsync } from '../../hooks/useAsync';
+import AsyncBoundary from '../../ui/AsyncBoundary';
 
 // Statuses for which a delivery timeline doesn't make sense.
 const NON_TRACKABLE_STATUSES = ['Cancelled', 'Returned', 'Pending'];
 
 const OrderDetail = () => {
   const { id } = useParams();
-  const found = getAllOrdersForAdmin().find((o) => o.id === id);
+  const state = useAsync(() => getOrderForAdmin(id), [id]);
+  return <AsyncBoundary state={state}>{(found) => <OrderView key={found?.id || id} found={found} />}</AsyncBoundary>;
+};
+
+const OrderView = ({ found }) => {
+  const { notify } = useToast();
   const [order, setOrder] = useState(found);
+  const [updating, setUpdating] = useState(false);
 
   if (!order) {
     return (
@@ -28,19 +37,20 @@ const OrderDetail = () => {
     );
   }
 
-  const handleStatusChange = (e) => {
+  // Status changes are written to the database; a trigger records the status
+  // history, restocks on cancellation and settles COD payments on delivery.
+  const handleStatusChange = async (e) => {
     const status = e.target.value;
-    if (order.synthetic) {
-      // Synthetic orders don't exist in localStorage — reflect the change locally only.
-      setOrder((o) => ({ ...o, status }));
-      return;
+    setUpdating(true);
+    try {
+      const updated = await updateOrderStatus(order.dbId, status);
+      setOrder(updated);
+      notify(`Order marked ${status}`, 'success', 1800);
+    } catch (err) {
+      notify(err.message, 'error');
+    } finally {
+      setUpdating(false);
     }
-    const updated = updateOrderStatus(order.id, status);
-    setOrder((o) => ({
-      ...o,
-      status: updated?.status || status,
-      statusHistory: updated?.statusHistory || o.statusHistory,
-    }));
   };
 
   const subtotal = order.subtotal ?? order.total;
@@ -78,7 +88,7 @@ const OrderDetail = () => {
             <h3 className="font-display text-lg font-semibold text-ink-900 dark:text-white mb-4">Items</h3>
             <div className="space-y-3">
               {order.items.map((item, idx) => (
-                <div key={`${item.id}-${idx}`} className="flex items-center gap-3">
+                <div key={`${item.itemId}-${idx}`} className="flex items-center gap-3">
                   <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-cream-100 dark:bg-white/5 text-ink-800/30 dark:text-white/30">
                     <FaBoxOpen size={16} />
                   </span>
@@ -149,6 +159,22 @@ const OrderDetail = () => {
             </h3>
             <p className="text-sm font-medium text-ink-900 dark:text-white">{order.customerName}</p>
             <p className="text-sm text-ink-800/60 dark:text-white/60">{order.userEmail}</p>
+            {order.userId && (
+              <Link to={`/admin/customers/${order.userId}`} className="inline-block mt-2 text-xs font-semibold text-brand-600 dark:text-brand-300 hover:underline">
+                View customer
+              </Link>
+            )}
+          </div>
+
+          <div className="rounded-2xl bg-white dark:bg-ink-800 border border-ink-800/5 dark:border-white/10 shadow-soft p-5 md:p-6">
+            <h3 className="font-display text-lg font-semibold text-ink-900 dark:text-white mb-4">Payment</h3>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-ink-800/60 dark:text-white/60">{{ card: 'Card', upi: 'UPI', cod: 'Cash on delivery' }[order.payment.method] || '—'}</span>
+              <StatusBadge status={order.payment.status} />
+            </div>
+            {order.coupon && (
+              <p className="text-xs text-ink-800/50 dark:text-white/50 mt-3">Coupon {order.coupon.code} (-₹{order.coupon.discount})</p>
+            )}
           </div>
 
           {order.address && (
@@ -167,17 +193,25 @@ const OrderDetail = () => {
             <select
               value={order.status}
               onChange={handleStatusChange}
-              disabled={order.synthetic}
+              disabled={updating || order.status === 'Cancelled'}
               className="w-full rounded-xl border border-ink-800/10 dark:border-white/15 bg-cream-50 dark:bg-white/5 px-3.5 py-2.5 text-sm text-ink-900 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed outline-none focus:border-brand-400"
             >
               {ORDER_STATUSES.map((s) => (
                 <option key={s} value={s}>{s}</option>
               ))}
             </select>
-            {order.synthetic && (
-              <p className="text-xs text-ink-800/50 dark:text-white/50 mt-2">
-                Status updates are only supported for orders placed through checkout in this session.
-              </p>
+            {order.status === 'Cancelled' && (
+              <p className="text-xs text-ink-800/50 dark:text-white/50 mt-2">Cancelled orders can't be changed.</p>
+            )}
+            {order.statusHistory.length > 0 && (
+              <ul className="mt-4 space-y-1.5 border-t border-ink-800/10 dark:border-white/10 pt-3">
+                {order.statusHistory.map((h, i) => (
+                  <li key={i} className="flex items-center justify-between text-xs text-ink-800/60 dark:text-white/60">
+                    <span>{h.status}</span>
+                    <span>{new Date(h.at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
         </div>

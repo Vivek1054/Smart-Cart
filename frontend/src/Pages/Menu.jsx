@@ -6,6 +6,7 @@ import { ProductCardSkeleton } from '../ui/Skeleton';
 import Drawer from '../ui/Drawer';
 import Button from '../ui/Button';
 import { getAllProducts, getCategories } from '../data/products';
+import { useCatalogVersion } from '../context/CatalogContext';
 
 const SORT_OPTIONS = [
   { value: 'default', label: 'Featured' },
@@ -23,8 +24,6 @@ const PRICE_PRESETS = [
 ];
 
 const RATING_PRESETS = [4.5, 4, 3.5];
-
-const allProducts = getAllProducts();
 
 const FilterPanel = ({ categories, selectedCategory, setSelectedCategory, priceIdx, setPriceIdx, minRating, setMinRating, onlyDeals, setOnlyDeals, onClear }) => (
   <div className="space-y-8">
@@ -106,6 +105,9 @@ const FilterPanel = ({ categories, selectedCategory, setSelectedCategory, priceI
 );
 
 const Menu = () => {
+  const catalogVersion = useCatalogVersion();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const allProducts = useMemo(() => getAllProducts(), [catalogVersion]);
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || 'All');
@@ -152,7 +154,7 @@ const Menu = () => {
       default: break;
     }
     return list;
-  }, [selectedCategory, sortBy, priceIdx, minRating, onlyDeals, query]);
+  }, [allProducts, selectedCategory, sortBy, priceIdx, minRating, onlyDeals, query]);
 
   const activeFilterCount = [
     selectedCategory !== 'All',

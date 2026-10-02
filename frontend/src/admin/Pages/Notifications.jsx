@@ -1,10 +1,15 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { getAdminNotifications } from '../../data/notifications';
+import { useAsync } from '../../hooks/useAsync';
+import AsyncBoundary from '../../ui/AsyncBoundary';
 
 const Notifications = () => {
-  const notifications = getAdminNotifications();
+  const state = useAsync(getAdminNotifications, []);
+  return <AsyncBoundary state={state}>{(notifications) => <NotificationList notifications={notifications} />}</AsyncBoundary>;
+};
 
+const NotificationList = ({ notifications }) => {
   if (notifications.length === 0) {
     return (
       <div className="min-h-[50vh] flex flex-col items-center justify-center text-center px-4">

@@ -1,12 +1,15 @@
 import React from 'react';
 import { useParams } from 'react-router-dom';
 import ProductForm from '../components/ProductForm';
-import { getProductById, adminUpdateProduct } from '../../data/products';
+import { getProductByIdForAdmin, adminUpdateProduct } from '../../data/products';
+import { useCatalogVersion } from '../../context/CatalogContext';
 import NotFound from '../../Pages/NotFound';
 
 const EditProduct = () => {
   const { id } = useParams();
-  const product = getProductById(id);
+  const catalogVersion = useCatalogVersion();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const product = React.useMemo(() => getProductByIdForAdmin(id), [id, catalogVersion]);
 
   if (!product) return <NotFound />;
 

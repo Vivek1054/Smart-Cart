@@ -7,14 +7,34 @@ import KpiCard from '../components/KpiCard';
 import StatusBadge from '../components/StatusBadge';
 import LineChart from '../../ui/charts/LineChart';
 import DonutChart from '../../ui/charts/DonutChart';
-import { getDashboardKPIs, getRevenueTrend, getAllOrdersForAdmin } from '../../data/adminData';
-import { getAllProducts } from '../../data/products';
+import { getAllProductsForAdmin } from '../../data/products';
+import { useCatalogVersion } from '../../context/CatalogContext';
+import { useAsync } from '../../hooks/useAsync';
+import AsyncBoundary from '../../ui/AsyncBoundary';
+import { api } from '../../services/api';
 
+// All numbers come from GET /api/v1/admin/dashboard (real aggregates computed in Postgres).
 const Dashboard = () => {
-  const kpis = getDashboardKPIs();
-  const trend = getRevenueTrend(14);
-  const orders = getAllOrdersForAdmin().slice(0, 6);
-  const products = getAllProducts();
+  useCatalogVersion();
+  const state = useAsync(() => api.get('/admin/dashboard'), []);
+  return <AsyncBoundary state={state}>{(data) => <DashboardView data={data} />}</AsyncBoundary>;
+};
+
+const DashboardView = ({ data }) => {
+  const products = getAllProductsForAdmin();
+  const t = data.totals;
+  const kpis = {
+    totalRevenue: t.revenue,
+    totalOrders: t.orders,
+    totalCustomers: t.customers,
+    totalProducts: t.products,
+    todaysSales: t.todaysSales,
+    pendingOrders: t.pendingOrders,
+    lowStock: t.lowStock,
+    avgOrderValue: t.avgOrderValue,
+  };
+  const trend = data.revenueByDay.slice(-14);
+  const orders = data.recentOrders;
 
   const categoryBreakdown = Object.entries(
     products.reduce((acc, p) => {
@@ -31,13 +51,13 @@ const Dashboard = () => {
     <div className="space-y-6">
       {/* KPI Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <KpiCard icon={FaRupeeSign} label="Total Revenue" value={`₹${kpis.totalRevenue.toLocaleString()}`} change={12.4} tone="brand" />
-        <KpiCard icon={FaShoppingBag} label="Total Orders" value={kpis.totalOrders} change={8.1} tone="blue" />
-        <KpiCard icon={FaUsers} label="Total Customers" value={kpis.totalCustomers} change={4.3} tone="green" />
+        <KpiCard icon={FaRupeeSign} label="Total Revenue" value={`₹${kpis.totalRevenue.toLocaleString()}`} tone="brand" />
+        <KpiCard icon={FaShoppingBag} label="Total Orders" value={kpis.totalOrders} tone="blue" />
+        <KpiCard icon={FaUsers} label="Total Customers" value={kpis.totalCustomers} tone="green" />
         <KpiCard icon={FaBoxOpen} label="Total Products" value={kpis.totalProducts} tone="amber" />
         <KpiCard icon={FaChartLine} label="Today's Sales" value={`₹${kpis.todaysSales.toLocaleString()}`} tone="brand" />
         <KpiCard icon={FaClock} label="Pending Orders" value={kpis.pendingOrders} tone="amber" />
-        <KpiCard icon={FaExclamationTriangle} label="Low Stock Items" value={kpis.lowStock} tone="green" change={-2} />
+        <KpiCard icon={FaExclamationTriangle} label="Low Stock Items" value={kpis.lowStock} tone="green" />
         <KpiCard icon={FaRupeeSign} label="Avg. Order Value" value={`₹${kpis.avgOrderValue}`} tone="blue" />
       </div>
 
@@ -76,11 +96,14 @@ const Dashboard = () => {
               </tr>
             </thead>
             <tbody>
+              {orders.length === 0 && (
+                <tr><td colSpan={5} className="px-5 py-8 text-center text-ink-800/50 dark:text-white/50">No orders yet.</td></tr>
+              )}
               {orders.map((o) => (
-                <tr key={o.id} className="border-t border-ink-800/5 dark:border-white/5 hover:bg-cream-50 dark:hover:bg-white/[0.03] transition-colors">
-                  <td className="px-5 py-3.5 font-mono text-xs text-ink-800/70 dark:text-white/70">{o.id}</td>
-                  <td className="px-5 py-3.5 text-ink-900 dark:text-white">{o.customerName}</td>
-                  <td className="px-5 py-3.5 text-ink-800/60 dark:text-white/60">{o.items.length} item{o.items.length > 1 ? 's' : ''}</td>
+                <tr key={o.orderNumber} className="border-t border-ink-800/5 dark:border-white/5 hover:bg-cream-50 dark:hover:bg-white/[0.03] transition-colors">
+                  <td className="px-5 py-3.5 font-mono text-xs text-ink-800/70 dark:text-white/70">{o.orderNumber}</td>
+                  <td className="px-5 py-3.5 text-ink-900 dark:text-white">{o.customer}</td>
+                  <td className="px-5 py-3.5 text-ink-800/60 dark:text-white/60">{o.itemCount} item{o.itemCount > 1 ? 's' : ''}</td>
                   <td className="px-5 py-3.5 font-semibold text-ink-900 dark:text-white">₹{o.total}</td>
                   <td className="px-5 py-3.5"><StatusBadge status={o.status} /></td>
                 </tr>

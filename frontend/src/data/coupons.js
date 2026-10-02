@@ -1,58 +1,63 @@
-const COUPONS_KEY = 'smartcart_coupons';
+import { supabase } from '../lib/supabase';
+import { unwrap } from '../lib/errors';
+import { api } from '../services/api';
+import { getCatalogState, mapCoupon, refreshCatalog } from './catalogStore';
 
-const DEFAULT_COUPONS = [
-  { id: 1, code: 'WELCOME10', type: 'percentage', value: 10, minOrder: 50, maxDiscount: 30, expiry: '2026-12-31', usageLimit: 500, usedCount: 128, status: 'Active' },
-  { id: 2, code: 'FLAT20', type: 'fixed', value: 20, minOrder: 100, maxDiscount: 20, expiry: '2026-10-31', usageLimit: 200, usedCount: 54, status: 'Active' },
-  { id: 3, code: 'SANDWICH50', type: 'percentage', value: 50, minOrder: 30, maxDiscount: 25, expiry: '2026-09-15', usageLimit: 100, usedCount: 100, status: 'Expired' },
-  { id: 4, code: 'FREESHIP', type: 'fixed', value: 25, minOrder: 0, maxDiscount: 25, expiry: '2027-01-31', usageLimit: 1000, usedCount: 340, status: 'Active' },
-];
+// Coupons live in Supabase. Discount calculation is authoritative on the server
+// (validate_coupon for previews, place_order at checkout); the browser never
+// decides whether a coupon is valid.
 
-const read = () => {
+// Suggestions shown in the coupon box: only currently usable coupons.
+export const getActiveCoupons = () => {
+  const today = new Date().toISOString().slice(0, 10);
+  return getCatalogState().coupons.filter(
+    (c) => c.status === 'Active' && c.expiry >= today && c.usedCount < c.usageLimit
+  );
+};
+
+// Server-side validation + discount preview via the Express API. The browser sends
+// only product ids + quantities; the server prices them from the database.
+export const validateCoupon = async (code, cartItems) => {
   try {
-    const raw = localStorage.getItem(COUPONS_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch { /* fall through to seed */ }
-  localStorage.setItem(COUPONS_KEY, JSON.stringify(DEFAULT_COUPONS));
-  return DEFAULT_COUPONS;
+    const res = await api.post(
+      '/coupons/validate',
+      { code, items: cartItems.map((i) => ({ productId: i.id, qty: i.qty })) },
+      { auth: false }
+    );
+    if (!res.valid) return { ok: false, error: res.message };
+    return { ok: true, coupon: res.coupon, discount: res.discount };
+  } catch (err) {
+    if (err.code === 'VALIDATION_ERROR') return { ok: false, error: 'Enter a valid coupon code.' };
+    return { ok: false, error: err.message };
+  }
 };
 
-const write = (coupons) => localStorage.setItem(COUPONS_KEY, JSON.stringify(coupons));
+// --- Admin (RLS: admins only) ---
+export const getCoupons = async () =>
+  unwrap(await supabase.from('coupons').select('*').order('id')).map(mapCoupon);
 
-export const getCoupons = () => read();
+const toRow = (c) => ({
+  code: c.code.trim().toUpperCase(),
+  type: c.type,
+  value: Number(c.value),
+  min_order: Number(c.minOrder) || 0,
+  max_discount: Number(c.maxDiscount) || 0,
+  expiry: c.expiry,
+  usage_limit: Number(c.usageLimit) || 0,
+  status: c.status,
+});
 
-export const getActiveCoupons = () => read().filter((c) => c.status === 'Active' && new Date(c.expiry) > new Date());
-
-export const validateCoupon = (code, subtotal) => {
-  const coupon = read().find((c) => c.code.toLowerCase() === code.trim().toLowerCase());
-  if (!coupon) return { ok: false, error: 'Invalid coupon code.' };
-  if (coupon.status !== 'Active') return { ok: false, error: 'This coupon is no longer active.' };
-  if (new Date(coupon.expiry) < new Date()) return { ok: false, error: 'This coupon has expired.' };
-  if (coupon.usedCount >= coupon.usageLimit) return { ok: false, error: 'This coupon has reached its usage limit.' };
-  if (subtotal < coupon.minOrder) return { ok: false, error: `Minimum order of ₹${coupon.minOrder} required.` };
-
-  const rawDiscount = coupon.type === 'percentage' ? (subtotal * coupon.value) / 100 : coupon.value;
-  const discount = Math.min(rawDiscount, coupon.maxDiscount);
-  return { ok: true, coupon, discount: Math.round(discount) };
+export const addCoupon = async (coupon) => {
+  unwrap(await supabase.from('coupons').insert(toRow(coupon)));
+  await refreshCatalog();
 };
 
-export const redeemCoupon = (code) => {
-  const coupons = read();
-  const updated = coupons.map((c) => (c.code.toLowerCase() === code.trim().toLowerCase() ? { ...c, usedCount: c.usedCount + 1 } : c));
-  write(updated);
+export const updateCoupon = async (id, coupon) => {
+  unwrap(await supabase.from('coupons').update(toRow(coupon)).eq('id', id));
+  await refreshCatalog();
 };
 
-export const addCoupon = (coupon) => {
-  const coupons = read();
-  const next = { ...coupon, id: Date.now(), usedCount: 0 };
-  write([...coupons, next]);
-  return next;
-};
-
-export const updateCoupon = (id, patch) => {
-  const coupons = read().map((c) => (c.id === id ? { ...c, ...patch } : c));
-  write(coupons);
-};
-
-export const deleteCoupon = (id) => {
-  write(read().filter((c) => c.id !== id));
+export const deleteCoupon = async (id) => {
+  unwrap(await supabase.from('coupons').delete().eq('id', id));
+  await refreshCatalog();
 };

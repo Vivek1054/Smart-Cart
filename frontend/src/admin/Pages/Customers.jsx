@@ -6,10 +6,16 @@ import KpiCard from '../components/KpiCard';
 import StatusBadge from '../components/StatusBadge';
 import DataTable from '../components/DataTable';
 import { getCustomers } from '../../data/adminData';
+import { useAsync } from '../../hooks/useAsync';
+import AsyncBoundary from '../../ui/AsyncBoundary';
 
 const Customers = () => {
+  const state = useAsync(getCustomers, []);
+  return <AsyncBoundary state={state}>{(customers) => <CustomersView customers={customers} />}</AsyncBoundary>;
+};
+
+const CustomersView = ({ customers }) => {
   const navigate = useNavigate();
-  const customers = getCustomers();
 
   const activeCount = customers.filter((c) => c.status === 'Active').length;
   const avgSpend = customers.length

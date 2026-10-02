@@ -1,22 +1,29 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaPlus, FaEdit, FaTrash, FaEye } from 'react-icons/fa';
 import DataTable from '../components/DataTable';
 import StatusBadge from '../components/StatusBadge';
 import ConfirmDialog from '../components/ConfirmDialog';
 import Button from '../../ui/Button';
-import { getAllProducts, adminDeleteProduct } from '../../data/products';
+import { getAllProductsForAdmin, adminDeleteProduct } from '../../data/products';
+import { useCatalogVersion } from '../../context/CatalogContext';
+import { useToast } from '../../context/ToastContext';
 
 const Products = () => {
   const navigate = useNavigate();
-  const [products, setProducts] = useState(getAllProducts);
+  const { notify } = useToast();
+  const catalogVersion = useCatalogVersion();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const products = useMemo(() => getAllProductsForAdmin(), [catalogVersion]);
   const [toDelete, setToDelete] = useState(null);
 
-  const refresh = () => setProducts(getAllProducts());
-
-  const handleDelete = () => {
-    adminDeleteProduct(toDelete.id);
-    refresh();
+  const handleDelete = async () => {
+    try {
+      await adminDeleteProduct(toDelete.id);
+      notify('Product deleted', 'success', 1800);
+    } catch (err) {
+      notify(err.message, 'error');
+    }
   };
 
   const columns = [
@@ -36,7 +43,7 @@ const Products = () => {
     { key: 'price', label: 'Price', render: (p) => `₹${p.price}` },
     { key: 'stockCount', label: 'Stock', render: (p) => p.stockCount },
     { key: 'rating', label: 'Rating', render: (p) => `${p.rating} ★` },
-    { key: 'status', label: 'Status', render: (p) => <StatusBadge status={p.inStock ? 'In Stock' : 'Out of Stock'} /> },
+    { key: 'status', label: 'Status', render: (p) => <StatusBadge status={!p.isActive ? 'Inactive' : p.inStock ? 'In Stock' : 'Out of Stock'} /> },
     {
       key: 'actions', label: 'Actions',
       render: (p) => (

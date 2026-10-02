@@ -43,21 +43,24 @@ const Signup = () => {
     return Object.keys(e).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
     setLoading(true);
-    setTimeout(() => {
-      const result = signup(form);
-      setLoading(false);
-      if (result.ok) {
-        setSuccess(true);
-        notify('Account created! Welcome to SmartCart.', 'success');
-        setTimeout(() => navigate('/account'), 600);
-      } else {
-        setErrors({ form: result.error });
-      }
-    }, 500);
+    const result = await signup(form);
+    setLoading(false);
+    if (!result.ok) {
+      setErrors({ form: result.error });
+      return;
+    }
+    setSuccess(true);
+    if (result.needsConfirmation) {
+      notify('Account created! Check your email to confirm it, then log in.', 'success', 6000);
+      setTimeout(() => navigate('/login'), 900);
+    } else {
+      notify('Account created! Welcome to SmartCart.', 'success');
+      setTimeout(() => navigate('/account'), 600);
+    }
   };
 
   return (

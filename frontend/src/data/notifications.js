@@ -1,7 +1,12 @@
-import { getAllProducts } from './products';
-import { getRealOrders } from './orders';
+// Notifications are derived from real application state (orders, stock,
+// sign-ups, reviews, returns). Nothing here is fabricated: no activity, no
+// notification.
+import { supabase } from '../lib/supabase';
+import { getAllProductsForAdmin, getFlashDeals } from './products';
+import { getOrdersForUser } from './orders';
+import { getAllOrdersForAdmin, LOW_STOCK_THRESHOLD } from './adminData';
 
-const timeAgo = (ms) => {
+export const timeAgo = (ms) => {
   const diff = Date.now() - ms;
   const mins = Math.floor(diff / 60000);
   if (mins < 1) return 'Just now';
@@ -11,44 +16,66 @@ const timeAgo = (ms) => {
   return `${Math.floor(hours / 24)}d ago`;
 };
 
-const SEED_ADMIN = [
-  { icon: '⭐', message: 'New 5-star review on "Chicken Mayo".', minsAgo: 42 },
-  { icon: '👥', message: 'New customer Priya Sharma signed up.', minsAgo: 130 },
-  { icon: '💰', message: "You've crossed ₹50,000 in weekly revenue!", minsAgo: 260 },
-  { icon: '🛒', message: 'Order SC20000031 was placed.', minsAgo: 400 },
-];
+const finish = (list) =>
+  list
+    .sort((a, b) => b.at - a.at)
+    .map((n, i) => ({ id: i + 1, icon: n.icon, message: n.message, time: timeAgo(n.at) }));
 
-export const getAdminNotifications = () => {
-  const products = getAllProducts();
-  const lowStock = products.filter((p) => p.inStock && p.stockCount <= 8);
-  const realOrders = getRealOrders().slice(0, 3);
+export const getAdminNotifications = async () => {
+  const [orders, customers, pendingReviews, returns] = await Promise.all([
+    getAllOrdersForAdmin(),
+    supabase.from('profiles').select('name, email, created_at').eq('role', 'customer')
+      .order('created_at', { ascending: false }).limit(3),
+    supabase.from('product_reviews').select('id, created_at, products(name)').eq('status', 'Pending')
+      .order('created_at', { ascending: false }).limit(3),
+    supabase.from('returns').select('return_number, created_at').eq('status', 'Requested')
+      .order('created_at', { ascending: false }).limit(3),
+  ]);
 
-  const dynamic = [
-    ...realOrders.map((o) => ({ icon: '🛒', message: `New order ${o.id} from ${o.address?.fullName || o.userEmail}.`, minsAgo: Math.max(1, Math.round((Date.now() - o.createdAt) / 60000)) })),
-    ...lowStock.slice(0, 2).map((p) => ({ icon: '⚠️', message: `Low stock: "${p.name}" has only ${p.stockCount} left.`, minsAgo: 15 })),
-  ];
-
-  return [...dynamic, ...SEED_ADMIN]
-    .sort((a, b) => a.minsAgo - b.minsAgo)
-    .map((n, i) => ({ id: i + 1, icon: n.icon, message: n.message, time: timeAgo(Date.now() - n.minsAgo * 60000) }));
+  const list = [];
+  orders.slice(0, 4).forEach((o) => list.push({
+    icon: '🛒', at: o.createdAt, message: `New order ${o.id} from ${o.customerName} (₹${o.total}).`,
+  }));
+  getAllProductsForAdmin()
+    .filter((p) => p.isActive && p.inStock && p.stockCount <= LOW_STOCK_THRESHOLD)
+    .slice(0, 3)
+    .forEach((p) => list.push({ icon: '⚠️', at: Date.now() - 60000, message: `Low stock: "${p.name}" has only ${p.stockCount} left.` }));
+  getAllProductsForAdmin()
+    .filter((p) => p.isActive && !p.inStock)
+    .slice(0, 2)
+    .forEach((p) => list.push({ icon: '🚫', at: Date.now() - 120000, message: `Out of stock: "${p.name}".` }));
+  (customers.data || []).forEach((c) => list.push({
+    icon: '👥', at: new Date(c.created_at).getTime(), message: `New customer ${c.name || c.email} signed up.`,
+  }));
+  (pendingReviews.data || []).forEach((r) => list.push({
+    icon: '⭐', at: new Date(r.created_at).getTime(), message: `New review on "${r.products?.name || 'a product'}" awaiting moderation.`,
+  }));
+  (returns.data || []).forEach((r) => list.push({
+    icon: '↩️', at: new Date(r.created_at).getTime(), message: `Return ${r.return_number} was requested.`,
+  }));
+  return finish(list);
 };
 
-const SEED_CUSTOMER = [
-  { icon: '🎉', message: 'Welcome to SmartCart! Use code WELCOME10 on your first order.', minsAgo: 20 },
-  { icon: '⚡', message: 'Flash deals just dropped — up to 32% off today.', minsAgo: 180 },
-];
+export const getCustomerNotifications = async (user) => {
+  if (!user) return [];
+  const orders = await getOrdersForUser(user.id);
+  const list = [];
 
-export const getCustomerNotifications = (email) => {
-  const orderNotifs = getRealOrders()
-    .filter((o) => o.userEmail?.toLowerCase() === email?.toLowerCase())
-    .slice(0, 5)
-    .flatMap((o) => (o.statusHistory || []).map((h) => ({
-      icon: h.status === 'Delivered' ? '📦' : '🚚',
+  orders.slice(0, 5).forEach((o) => {
+    o.statusHistory.forEach((h) => list.push({
+      icon: h.status === 'Delivered' ? '📦' : h.status === 'Cancelled' ? '❌' : '🚚',
+      at: h.at,
       message: `Order ${o.id} is now "${h.status}".`,
-      minsAgo: Math.max(1, Math.round((Date.now() - h.at) / 60000)),
-    })));
+    }));
+  });
 
-  return [...orderNotifs, ...SEED_CUSTOMER]
-    .sort((a, b) => a.minsAgo - b.minsAgo)
-    .map((n, i) => ({ id: i + 1, icon: n.icon, message: n.message, time: timeAgo(Date.now() - n.minsAgo * 60000) }));
+  const deals = getFlashDeals();
+  if (deals.length) {
+    const top = Math.max(...deals.map((d) => d.discount));
+    list.push({ icon: '⚡', at: Date.now() - 60000, message: `${deals.length} flash deals live — up to ${top}% off.` });
+  }
+  if (user.createdAt) {
+    list.push({ icon: '🎉', at: new Date(user.createdAt).getTime(), message: 'Welcome to SmartCart!' });
+  }
+  return finish(list);
 };

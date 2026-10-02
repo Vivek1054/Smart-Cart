@@ -6,6 +6,9 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import Modal from '../../ui/Modal';
 import Button from '../../ui/Button';
 import Input from '../../ui/Input';
+import AsyncBoundary from '../../ui/AsyncBoundary';
+import { useAsync } from '../../hooks/useAsync';
+import { useToast } from '../../context/ToastContext';
 import { getCoupons, addCoupon, updateCoupon, deleteCoupon } from '../../data/coupons';
 
 const EMPTY_FORM = {
@@ -20,17 +23,22 @@ const EMPTY_FORM = {
 };
 
 const Coupons = () => {
-  const [coupons, setCoupons] = useState(getCoupons);
+  const { notify } = useToast();
+  const state = useAsync(getCoupons, []);
+  const coupons = state.data || [];
+  const [formError, setFormError] = useState('');
+  const [saving, setSaving] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingCoupon, setEditingCoupon] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [toDelete, setToDelete] = useState(null);
 
-  const refresh = () => setCoupons(getCoupons());
+  const refresh = state.reload;
 
   const openAddModal = () => {
     setEditingCoupon(null);
     setForm(EMPTY_FORM);
+    setFormError('');
     setModalOpen(true);
   };
 
@@ -46,6 +54,7 @@ const Coupons = () => {
       usageLimit: coupon.usageLimit,
       status: coupon.status,
     });
+    setFormError('');
     setModalOpen(true);
   };
 
@@ -57,7 +66,7 @@ const Coupons = () => {
 
   const updateField = (key, value) => setForm((f) => ({ ...f, [key]: value }));
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const payload = {
       code: form.code.trim().toUpperCase(),
@@ -70,19 +79,32 @@ const Coupons = () => {
       status: form.status,
     };
 
-    if (editingCoupon) {
-      updateCoupon(editingCoupon.id, payload);
-    } else {
-      addCoupon(payload);
+    setSaving(true);
+    setFormError('');
+    try {
+      if (editingCoupon) await updateCoupon(editingCoupon.id, payload);
+      else await addCoupon(payload);
+      refresh();
+      closeModal();
+      notify('Coupon saved', 'success', 1800);
+    } catch (err) {
+      setFormError(err.message);
+    } finally {
+      setSaving(false);
     }
-    refresh();
-    closeModal();
   };
 
-  const handleDelete = () => {
-    deleteCoupon(toDelete.id);
-    refresh();
+  const handleDelete = async () => {
+    try {
+      await deleteCoupon(toDelete.id);
+      refresh();
+      notify('Coupon deleted', 'success', 1800);
+    } catch (err) {
+      notify(err.message, 'error');
+    }
   };
+
+  if ((state.loading && !state.data) || state.error) return <AsyncBoundary state={state}>{() => null}</AsyncBoundary>;
 
   const columns = [
     {
@@ -103,7 +125,7 @@ const Coupons = () => {
           <div className="h-1.5 w-16 rounded-full bg-ink-800/10 dark:bg-white/10 overflow-hidden">
             <div
               className="h-full bg-brand-500"
-              style={{ width: `${Math.min(100, (c.usedCount / c.usageLimit) * 100)}%` }}
+              style={{ width: `${c.usageLimit ? Math.min(100, (c.usedCount / c.usageLimit) * 100) : 100}%` }}
             />
           </div>
         </div>
@@ -116,7 +138,7 @@ const Coupons = () => {
     {
       key: 'status', label: 'Status',
       render: (c) => {
-        const isExpired = new Date(c.expiry) < new Date();
+        const isExpired = c.expiry < new Date().toISOString().slice(0, 10);
         return <StatusBadge status={isExpired ? 'Expired' : c.status} />;
       },
     },
@@ -229,13 +251,15 @@ const Coupons = () => {
               className="w-full px-4 py-2.5 rounded-xl border border-ink-800/10 dark:border-white/15 bg-cream-50 dark:bg-white/5 dark:text-white transition focus:outline-none focus:ring-2 focus:border-brand-400 focus:ring-brand-200 dark:focus:ring-brand-900"
             >
               <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
               <option value="Expired">Expired</option>
             </select>
           </div>
 
+          {formError && <p role="alert" className="text-sm text-red-600 dark:text-red-300">{formError}</p>}
           <div className="flex gap-3 pt-2">
             <Button type="button" variant="outline" className="flex-1" onClick={closeModal}>Cancel</Button>
-            <Button type="submit" className="flex-1">
+            <Button type="submit" loading={saving} className="flex-1">
               <FaTicketAlt size={12} /> {editingCoupon ? 'Save Changes' : 'Create Coupon'}
             </Button>
           </div>

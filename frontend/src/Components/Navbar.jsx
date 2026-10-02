@@ -9,6 +9,7 @@ import { getCategories } from '../data/products';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useAuth } from '../context/AuthContext';
+import { useCatalogVersion } from '../context/CatalogContext';
 import MobileMenu from './MobileMenu';
 import MiniCart from './MiniCart';
 import NotificationBell from './NotificationBell';
@@ -56,6 +57,7 @@ const Navbar = () => {
   const { itemCount } = useCart();
   const { count: wishCount } = useWishlist();
   const { user, isAuthenticated, logout } = useAuth();
+  useCatalogVersion();
 
   useEffect(() => {
     const root = document.documentElement;

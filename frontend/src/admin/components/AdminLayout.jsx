@@ -22,10 +22,18 @@ const TITLES = {
 };
 
 const AdminLayout = () => {
-  const { isAdminAuthenticated } = useAdminAuth();
+  const { isAdminAuthenticated, loading } = useAdminAuth();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-cream-100 dark:bg-ink-900">
+        <div className="h-9 w-9 rounded-full border-2 border-brand-500 border-t-transparent animate-spin" />
+      </div>
+    );
+  }
 
   if (!isAdminAuthenticated) {
     return <Navigate to="/admin/login" replace state={{ from: location.pathname }} />;

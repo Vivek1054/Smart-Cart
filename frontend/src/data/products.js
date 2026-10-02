@@ -1,98 +1,31 @@
-import rawList from '../assets/list.json';
+import { supabase } from '../lib/supabase';
+import { unwrap } from '../lib/errors';
+import { api } from '../services/api';
+import { getCatalogState, refreshCatalog } from './catalogStore';
 
-// Deterministic pseudo-random generator seeded by product id so values
-// stay stable across renders/reloads instead of reshuffling randomly.
-const seededFraction = (seed, salt = 0) => {
-  const x = Math.sin(seed * 9301 + salt * 49297) * 233280;
-  return x - Math.floor(x);
-};
+// Product data now lives in Supabase (products / categories / product_reviews).
+// The synchronous getters below read the catalog cache that CatalogProvider
+// loads from Supabase, so existing components keep working unchanged.
 
-const SPEC_TEMPLATES = {
-  'under 40 rupee': { weight: '150g', calories: '280 kcal', prepTime: '5 min', allergens: 'Gluten, Dairy' },
-  'premium sandwiches': { weight: '220g', calories: '410 kcal', prepTime: '8 min', allergens: 'Gluten, Dairy, Egg' },
-  'egg specials': { weight: '180g', calories: '320 kcal', prepTime: '6 min', allergens: 'Gluten, Egg' },
-  'vegetarian specials': { weight: '170g', calories: '260 kcal', prepTime: '6 min', allergens: 'Gluten, Dairy' },
-  'non-veg specials': { weight: '210g', calories: '390 kcal', prepTime: '9 min', allergens: 'Gluten, Dairy' },
-};
+export const DEFAULT_PRODUCT_IMAGE =
+  'https://images.pexels.com/photos/3761662/pexels-photo-3761662.jpeg?auto=compress&cs=tinysrgb&w=500';
 
-const REVIEW_SNIPPETS = [
-  "Exactly what I was craving, fresh and generously filled.",
-  "Great value for the price, will order again.",
-  "Tasted amazing, packaging kept it warm on delivery.",
-  "Solid choice, though I'd like a bit more filling.",
-  "One of the better sandwiches I've had from a delivery app.",
-  "Perfectly toasted and the flavors were well balanced.",
-];
+const activeCategoryNames = () =>
+  new Set(getCatalogState().categories.filter((c) => c.status === 'Active').map((c) => c.name));
 
-function buildProduct(item) {
-  const rating = Math.round((3.9 + seededFraction(item.id, 1) * 1.0) * 10) / 10;
-  const reviewCount = Math.floor(18 + seededFraction(item.id, 2) * 260);
-  const hasDiscount = seededFraction(item.id, 3) > 0.45;
-  const discount = hasDiscount ? Math.floor(10 + seededFraction(item.id, 4) * 25) : 0;
-  const originalPrice = discount ? Math.round(item.price / (1 - discount / 100)) : item.price;
-  const inStock = item.stockCount === undefined ? seededFraction(item.id, 5) > 0.08 : item.stockCount > 0;
-  const stockCount = item.stockCount !== undefined ? item.stockCount : (inStock ? Math.floor(4 + seededFraction(item.id, 6) * 40) : 0);
-  const spec = SPEC_TEMPLATES[item.category] || SPEC_TEMPLATES['under 40 rupee'];
-
-  const reviews = [0, 1].map((i) => {
-    const idx = Math.floor(seededFraction(item.id, 10 + i) * REVIEW_SNIPPETS.length);
-    const r = Math.max(3, Math.min(5, Math.round(rating - 0.5 + seededFraction(item.id, 20 + i) * 1.5)));
-    return {
-      id: `${item.id}-r${i}`,
-      author: 'Verified Buyer',
-      rating: r,
-      text: REVIEW_SNIPPETS[idx],
-    };
-  });
-
-  return {
-    ...item,
-    rating,
-    reviewCount,
-    discount,
-    originalPrice,
-    inStock,
-    stockCount,
-    isBestSeller: item.id % 3 === 0,
-    isTrending: item.id % 4 === 0,
-    isFlashDeal: discount >= 20,
-    specifications: {
-      Weight: spec.weight,
-      Calories: spec.calories,
-      'Prep Time': spec.prepTime,
-      Allergens: spec.allergens,
-    },
-    description: item.title,
-    reviews,
-  };
-}
-
-const OVERLAY_KEY = 'smartcart_product_overlay';
-const readOverlay = () => {
-  try {
-    return JSON.parse(localStorage.getItem(OVERLAY_KEY)) || { added: [], edited: {}, deletedIds: [] };
-  } catch {
-    return { added: [], edited: {}, deletedIds: [] };
-  }
-};
-const writeOverlay = (overlay) => localStorage.setItem(OVERLAY_KEY, JSON.stringify(overlay));
-
-const basProducts = rawList.map(buildProduct);
-
-// Merges the static seed catalog with anything added/edited/deleted via the
-// Admin > Products screen (persisted in localStorage — there's no backend).
+// Storefront view: active products in active categories only.
 export const getAllProducts = () => {
-  const overlay = readOverlay();
-  const edited = basProducts
-    .filter((p) => !overlay.deletedIds.includes(p.id))
-    .map((p) => (overlay.edited[p.id] ? buildProduct({ ...p, ...overlay.edited[p.id] }) : p));
-  const added = overlay.added.map(buildProduct);
-  return [...edited, ...added];
+  const active = activeCategoryNames();
+  return getCatalogState().products.filter((p) => p.isActive && active.has(p.category));
 };
+
+// Admin view: every product, including inactive ones.
+export const getAllProductsForAdmin = () => getCatalogState().products;
 
 export const getProductById = (id) => getAllProducts().find((p) => String(p.id) === String(id));
+export const getProductByIdForAdmin = (id) => getCatalogState().products.find((p) => String(p.id) === String(id));
 
-export const getCategories = () => ['All', ...new Set(getAllProducts().map((p) => p.category))];
+export const getCategories = () => ['All', ...getCatalogState().categories.filter((c) => c.status === 'Active').map((c) => c.name)];
 
 export const getRelatedProducts = (product, limit = 4) => {
   if (!product) return [];
@@ -108,33 +41,68 @@ export const getBestSellers = (limit = 8) => getAllProducts().filter((p) => p.is
 export const getTrending = (limit = 8) => getAllProducts().filter((p) => p.isTrending).slice(0, limit);
 export const getFlashDeals = (limit = 8) => getAllProducts().filter((p) => p.isFlashDeal).slice(0, limit);
 
-// --- Admin CRUD (persisted as an overlay on top of the static seed data) ---
-export const adminAddProduct = (data) => {
-  const overlay = readOverlay();
-  const nextId = Math.max(0, ...basProducts.map((p) => p.id), ...overlay.added.map((p) => p.id)) + 1;
-  const newItem = { id: nextId, image: 'https://images.pexels.com/photos/3761662/pexels-photo-3761662.jpeg?auto=compress&cs=tinysrgb&w=500', ...data };
-  overlay.added.push(newItem);
-  writeOverlay(overlay);
-  return buildProduct(newItem);
+// --- Admin CRUD (RLS only lets admins write these tables) ---
+const categoryIdFor = (name) => {
+  const cat = getCatalogState().categories.find((c) => c.name === name);
+  if (!cat) throw new Error('Please choose a valid category.');
+  return cat.id;
 };
 
-export const adminUpdateProduct = (id, patch) => {
-  const overlay = readOverlay();
-  const addedIdx = overlay.added.findIndex((p) => p.id === Number(id));
-  if (addedIdx >= 0) {
-    overlay.added[addedIdx] = { ...overlay.added[addedIdx], ...patch };
-  } else {
-    overlay.edited[id] = { ...overlay.edited[id], ...patch };
-  }
-  writeOverlay(overlay);
+const toRow = (data) => {
+  const row = {};
+  if (data.name !== undefined) row.name = data.name;
+  if (data.title !== undefined) row.title = data.title;
+  if (data.price !== undefined) row.price = data.price;
+  if (data.stockCount !== undefined) row.stock_count = data.stockCount;
+  if (data.image !== undefined) row.image = data.image;
+  if (data.category !== undefined) row.category_id = categoryIdFor(data.category);
+  if (data.discount !== undefined) row.discount_percent = data.discount;
+  if (data.isActive !== undefined) row.is_active = data.isActive;
+  if (data.isBestSeller !== undefined) row.is_best_seller = data.isBestSeller;
+  if (data.isTrending !== undefined) row.is_trending = data.isTrending;
+  return row;
 };
 
-export const adminDeleteProduct = (id) => {
-  const overlay = readOverlay();
-  if (overlay.added.some((p) => p.id === Number(id))) {
-    overlay.added = overlay.added.filter((p) => p.id !== Number(id));
-  } else if (!overlay.deletedIds.includes(Number(id))) {
-    overlay.deletedIds.push(Number(id));
-  }
-  writeOverlay(overlay);
+export const adminAddProduct = async (data) => {
+  const row = { image: DEFAULT_PRODUCT_IMAGE, ...toRow(data) };
+  if (!row.image) row.image = DEFAULT_PRODUCT_IMAGE;
+  unwrap(await supabase.from('products').insert(row));
+  await refreshCatalog();
+};
+
+export const adminUpdateProduct = async (id, patch) => {
+  unwrap(await supabase.from('products').update(toRow(patch)).eq('id', id));
+  await refreshCatalog();
+};
+
+export const adminDeleteProduct = async (id) => {
+  unwrap(await supabase.from('products').delete().eq('id', id));
+  await refreshCatalog();
+};
+
+// --- Reviews (real, moderated) ---
+export const getApprovedReviews = async (productId) => {
+  const rows = unwrap(
+    await supabase
+      .from('product_reviews')
+      .select('id, author, rating, text, created_at')
+      .eq('product_id', productId)
+      .eq('status', 'Approved')
+      .order('created_at', { ascending: false })
+  );
+  return rows.map((r) => ({ id: r.id, author: r.author, rating: r.rating, text: r.text, date: r.created_at }));
+};
+
+// The signed-in user's own review of a product (any status), plus whether they may review.
+export const getMyReviewState = async (productId) => {
+  const [{ data: canReview }, { data: mine }] = await Promise.all([
+    supabase.rpc('has_purchased', { p_product_id: productId }),
+    supabase.from('product_reviews').select('id, rating, text, status').eq('product_id', productId).maybeSingle(),
+  ]);
+  return { canReview: !!canReview, mine: mine || null };
+};
+
+// POST /api/v1/products/:id/reviews - created as Pending (moderated); the user comes from the token.
+export const submitReview = async (productId, { rating, text }) => {
+  await api.post(`/products/${productId}/reviews`, { rating, text: text.trim() });
 };

@@ -3,13 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import { FaImage } from 'react-icons/fa';
 import Input from '../../ui/Input';
 import Button from '../../ui/Button';
-import { getCategories } from '../../data/products';
+import { getCategoriesWithMeta } from '../../data/categories';
+import { useCatalogVersion } from '../../context/CatalogContext';
 import { useToast } from '../../context/ToastContext';
 
 const ProductForm = ({ initial, onSubmit, submitLabel = 'Save Product' }) => {
   const navigate = useNavigate();
   const { notify } = useToast();
-  const categories = getCategories().filter((c) => c !== 'All');
+  const catalogVersion = useCatalogVersion();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const categories = React.useMemo(() => getCategoriesWithMeta().map((c) => c.name), [catalogVersion]);
 
   const [form, setForm] = useState({
     name: initial?.name || '',
@@ -18,6 +21,7 @@ const ProductForm = ({ initial, onSubmit, submitLabel = 'Save Product' }) => {
     price: initial?.price ?? '',
     stockCount: initial?.stockCount ?? '',
     image: initial?.image || '',
+    isActive: initial?.isActive ?? true,
   });
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -35,23 +39,27 @@ const ProductForm = ({ initial, onSubmit, submitLabel = 'Save Product' }) => {
     return Object.keys(e).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
     setSaving(true);
-    setTimeout(() => {
-      onSubmit({
+    try {
+      await onSubmit({
         name: form.name.trim(),
         title: form.title.trim(),
         category: form.category,
         price: Number(form.price),
-        stockCount: Number(form.stockCount),
+        stockCount: Math.floor(Number(form.stockCount)),
         image: form.image.trim() || undefined,
+        isActive: form.isActive,
       });
-      setSaving(false);
       notify('Product saved successfully', 'success');
       navigate('/admin/products');
-    }, 500);
+    } catch (err) {
+      setErrors({ form: err.message });
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -77,6 +85,16 @@ const ProductForm = ({ initial, onSubmit, submitLabel = 'Save Product' }) => {
           <Input label="Price (₹)" type="number" min="0" value={form.price} error={errors.price} onChange={set('price')} />
           <Input label="Stock Quantity" type="number" min="0" value={form.stockCount} error={errors.stockCount} onChange={set('stockCount')} />
         </div>
+
+        <label className="flex items-center gap-2.5 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={form.isActive}
+            onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
+            className="h-4 w-4 rounded accent-brand-500"
+          />
+          <span className="text-sm font-medium text-ink-800/80 dark:text-white/80">Active (visible in the store)</span>
+        </label>
       </div>
 
       <div className="space-y-4">
@@ -91,10 +109,11 @@ const ProductForm = ({ initial, onSubmit, submitLabel = 'Save Product' }) => {
           </div>
           <Input label="Image URL" value={form.image} onChange={set('image')} placeholder="https://..." />
           <p className="text-xs text-ink-800/40 dark:text-white/40 mt-2">
-            No backend file storage is connected, so paste an image URL rather than uploading a file.
+            Paste a link to the product image.
           </p>
         </div>
 
+        {errors.form && <p role="alert" className="text-sm text-red-600 dark:text-red-300">{errors.form}</p>}
         <div className="flex gap-3">
           <Button type="button" variant="outline" className="flex-1" onClick={() => navigate('/admin/products')}>Cancel</Button>
           <Button type="submit" loading={saving} className="flex-1">{submitLabel}</Button>

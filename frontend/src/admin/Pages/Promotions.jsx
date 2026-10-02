@@ -11,10 +11,14 @@ const Promotions = () => {
 
   const updateField = (key, value) => setForm((f) => ({ ...f, [key]: value }));
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    savePromoBanner(form);
-    notify('Banner updated', 'success');
+    try {
+      await savePromoBanner(form);
+      notify('Banner updated', 'success');
+    } catch (err) {
+      notify(err.message, 'error');
+    }
   };
 
   return (

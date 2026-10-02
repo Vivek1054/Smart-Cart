@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Link, Navigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaCheck, FaCreditCard, FaMoneyBillWave, FaMobileAlt } from 'react-icons/fa';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { createOrder } from '../data/orders';
-import { redeemCoupon } from '../data/coupons';
+import { placeOrder as placeOrderRequest } from '../data/orders';
+import { getAddresses } from '../data/addresses';
+import { friendlyError } from '../lib/errors';
 import Input from '../ui/Input';
 import Button from '../ui/Button';
 import CouponInput from '../Components/CouponInput';
@@ -41,14 +42,17 @@ const Stepper = ({ current }) => (
 );
 
 const Checkout = () => {
-  const { cartItems, subtotal, savings, deliveryFee, total, clearCart, coupon, couponDiscount } = useCart();
-  const { user } = useAuth();
+  const { cartItems, subtotal, deliveryFee, total, clearCart, coupon, couponDiscount } = useCart();
+  const { user, authLoading } = useAuth();
+  const location = useLocation();
 
   const [step, setStep] = useState(0);
+  const [savedAddresses, setSavedAddresses] = useState([]);
+  const [placeError, setPlaceError] = useState('');
   const [address, setAddress] = useState({
     fullName: user?.name || '',
     email: user?.email || '',
-    phone: '',
+    phone: user?.phone || '',
     line1: '',
     city: '',
     pincode: '',
@@ -58,9 +62,34 @@ const Checkout = () => {
   const [placing, setPlacing] = useState(false);
   const [order, setOrder] = useState(null);
 
+  useEffect(() => {
+    if (!user) return;
+    getAddresses(user.id).then(setSavedAddresses).catch((e) => console.error('[addresses]', e));
+  }, [user]);
+
+  if (authLoading) {
+    return (
+      <div className="min-h-[70vh] flex items-center justify-center pt-24">
+        <div className="h-9 w-9 rounded-full border-2 border-brand-500 border-t-transparent animate-spin" />
+      </div>
+    );
+  }
+
+  // A persistent order needs a real account (the cart itself can stay a guest cart).
+  if (!user) {
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  }
+
   if (cartItems.length === 0 && step < 3) {
     return <Navigate to="/cart" replace />;
   }
+
+  const applySavedAddress = (id) => {
+    const a = savedAddresses.find((x) => String(x.id) === String(id));
+    if (!a) return;
+    setAddress((prev) => ({ ...prev, line1: a.line1, city: a.city, pincode: a.pincode, phone: a.phone || prev.phone }));
+    setErrors({});
+  };
 
   const validateAddress = () => {
     const e = {};
@@ -80,31 +109,31 @@ const Checkout = () => {
   };
   const goBack = () => setStep((s) => Math.max(s - 1, 0));
 
-  const placeOrder = () => {
+  // The Express API reads the server-side cart and the database computes prices, stock,
+  // coupon, delivery fee and total atomically; we only send the address, coupon code and method.
+  const placeOrder = async () => {
     setPlacing(true);
-    setTimeout(() => {
-      const newOrder = createOrder({
-        userEmail: address.email,
-        items: cartItems.map((i) => ({ id: i.id, name: i.product.name, qty: i.qty, price: i.product.price })),
+    setPlaceError('');
+    try {
+      const newOrder = await placeOrderRequest({
         address,
-        subtotal,
-        deliveryFee,
-        savings,
-        total,
-        coupon: coupon ? { code: coupon.code, discount: couponDiscount } : null,
+        couponCode: coupon?.code,
+        paymentMethod,
       });
-      if (coupon) redeemCoupon(coupon.code);
       setOrder(newOrder);
-      clearCart();
-      setPlacing(false);
+      await clearCart();
       setStep(3);
-    }, 900);
+    } catch (err) {
+      setPlaceError(err.message || friendlyError(err));
+    } finally {
+      setPlacing(false);
+    }
   };
 
   return (
     <div className="max-w-3xl container mx-auto px-4 pt-28 md:pt-32 pb-16 dark:bg-ink-900 dark:text-white min-h-screen">
       <h1 className="font-display text-3xl md:text-4xl font-semibold text-ink-900 dark:text-white text-center mb-2">Checkout</h1>
-      <p className="text-center text-ink-800/60 dark:text-white/60 mb-10">Simulated checkout — no real payment is processed.</p>
+      <p className="text-center text-ink-800/60 dark:text-white/60 mb-10">Cash on delivery is confirmed instantly. Online payments are confirmed once your payment is received.</p>
 
       <Stepper current={step} />
 
@@ -119,6 +148,21 @@ const Checkout = () => {
           {step === 0 && (
             <div className="rounded-2xl bg-white dark:bg-ink-800 border border-ink-800/5 dark:border-white/10 shadow-soft p-6 md:p-8 space-y-4">
               <h2 className="font-display text-xl font-semibold text-ink-900 dark:text-white mb-2">Delivery Address</h2>
+              {savedAddresses.length > 0 && (
+                <label className="block">
+                  <span className="block text-sm font-semibold text-ink-800/80 dark:text-white/80 mb-1.5">Use a saved address</span>
+                  <select
+                    defaultValue=""
+                    onChange={(e) => applySavedAddress(e.target.value)}
+                    className="w-full rounded-xl border border-ink-800/10 dark:border-white/15 bg-cream-50 dark:bg-white/5 px-3.5 py-2.5 text-sm outline-none focus:border-brand-400"
+                  >
+                    <option value="" disabled>Select an address…</option>
+                    {savedAddresses.map((a) => (
+                      <option key={a.id} value={a.id}>{a.label || 'Address'} — {a.line1}, {a.city} {a.pincode}</option>
+                    ))}
+                  </select>
+                </label>
+              )}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Input label="Full Name" value={address.fullName} error={errors.fullName} onChange={(e) => setAddress({ ...address, fullName: e.target.value })} />
                 <Input label="Email" type="email" value={address.email} error={errors.email} onChange={(e) => setAddress({ ...address, email: e.target.value })} />
@@ -186,20 +230,21 @@ const Checkout = () => {
                 ))}
               </div>
 
-              {paymentMethod === 'card' && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Input containerClassName="sm:col-span-2" label="Card Number" placeholder="4242 4242 4242 4242" maxLength={19} />
-                  <Input label="Expiry" placeholder="MM/YY" maxLength={5} />
-                  <Input label="CVV" placeholder="•••" maxLength={3} type="password" />
-                </div>
-              )}
-              {paymentMethod === 'upi' && (
-                <Input label="UPI ID" placeholder="yourname@upi" />
+              {(paymentMethod === 'card' || paymentMethod === 'upi') && (
+                <p className="text-sm text-ink-800/60 dark:text-white/60">
+                  Your order will be placed as <span className="font-semibold">pending</span> and confirmed once your payment is received.
+                  We never collect or store card details on this page.
+                </p>
               )}
               {paymentMethod === 'cod' && (
                 <p className="text-sm text-ink-800/60 dark:text-white/60">Pay with cash when your order arrives.</p>
               )}
 
+              {placeError && (
+                <p role="alert" className="rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-300 text-sm font-medium px-4 py-2.5">
+                  {placeError}
+                </p>
+              )}
               <div className="flex gap-3">
                 <Button variant="outline" className="flex-1" onClick={goBack} disabled={placing}>Back</Button>
                 <Button className="flex-1" onClick={placeOrder} loading={placing}>
@@ -219,9 +264,11 @@ const Checkout = () => {
               >
                 <FaCheck size={28} />
               </motion.div>
-              <h2 className="font-display text-2xl md:text-3xl font-semibold text-ink-900 dark:text-white mb-2">Order Confirmed!</h2>
+              <h2 className="font-display text-2xl md:text-3xl font-semibold text-ink-900 dark:text-white mb-2">{order.status === 'Confirmed' ? 'Order Confirmed!' : 'Order Placed!'}</h2>
               <p className="text-ink-800/60 dark:text-white/60 mb-1">Order ID: <span className="font-semibold text-ink-900 dark:text-white">{order.id}</span></p>
-              <p className="text-ink-800/60 dark:text-white/60 mb-8">We've received your order and it's being prepared.</p>
+              <p className="text-ink-800/60 dark:text-white/60 mb-8">{order.status === 'Confirmed'
+                ? "We've received your order and it's being prepared. Pay with cash on delivery."
+                : "We've received your order. It will be confirmed once your payment is received."}</p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <Link to="/menu"><Button variant="outline">Continue Shopping</Button></Link>
                 <Link to="/account"><Button>View Orders</Button></Link>

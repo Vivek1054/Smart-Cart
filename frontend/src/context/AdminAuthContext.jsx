@@ -1,44 +1,35 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useMemo } from 'react';
+import { useAuth } from './AuthContext';
 
 const AdminAuthContext = createContext(null);
-const SESSION_KEY = 'smartcart_admin_session';
 
-// Demo-only admin auth: single hardcoded super-admin account, no backend.
-// Credentials: admin@smartcart.com / admin123
-const DEMO_ADMIN = { name: 'Alex Morgan', email: 'admin@smartcart.com', password: 'admin123', role: 'Super Admin' };
-
-const readSession = () => {
-  try {
-    const raw = localStorage.getItem(SESSION_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-};
-
+// Admin access = a Supabase Auth user whose profiles.role is 'admin'.
+// This context only reflects that state for the UI; the real enforcement is in
+// the database (RLS policies use is_admin()), so hiding a page is never the only guard.
 export const AdminAuthProvider = ({ children }) => {
-  const [admin, setAdmin] = useState(readSession);
+  const { user, isAdmin, authLoading, login: authLogin, logout: authLogout } = useAuth();
 
-  useEffect(() => {
-    if (admin) localStorage.setItem(SESSION_KEY, JSON.stringify(admin));
-    else localStorage.removeItem(SESSION_KEY);
-  }, [admin]);
-
-  const login = ({ email, password }) => {
-    if (email.toLowerCase() === DEMO_ADMIN.email && password === DEMO_ADMIN.password) {
-      setAdmin({ name: DEMO_ADMIN.name, email: DEMO_ADMIN.email, role: DEMO_ADMIN.role });
-      return { ok: true };
-    }
-    return { ok: false, error: 'Invalid admin credentials.' };
-  };
-
-  const logout = () => setAdmin(null);
-
-  return (
-    <AdminAuthContext.Provider value={{ admin, isAdminAuthenticated: !!admin, login, logout, demoCredentials: { email: DEMO_ADMIN.email, password: DEMO_ADMIN.password } }}>
-      {children}
-    </AdminAuthContext.Provider>
+  const admin = useMemo(
+    () => (isAdmin ? { name: user.name, email: user.email, role: 'Admin' } : null),
+    [isAdmin, user]
   );
+
+  const login = useCallback(async (credentials) => {
+    const result = await authLogin(credentials);
+    if (!result.ok) return result;
+    if (result.profile?.role !== 'admin') {
+      await authLogout();
+      return { ok: false, error: 'This account does not have admin access.' };
+    }
+    return { ok: true };
+  }, [authLogin, authLogout]);
+
+  const value = useMemo(
+    () => ({ admin, isAdminAuthenticated: !!admin, loading: authLoading, login, logout: authLogout }),
+    [admin, authLoading, login, authLogout]
+  );
+
+  return <AdminAuthContext.Provider value={value}>{children}</AdminAuthContext.Provider>;
 };
 
 export const useAdminAuth = () => {

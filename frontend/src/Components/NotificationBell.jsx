@@ -8,6 +8,17 @@ const NotificationBell = () => {
   const { user, isAuthenticated } = useAuth();
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
+  const [notifications, setNotifications] = useState([]);
+
+  const load = () => {
+    if (!user) return;
+    getCustomerNotifications(user)
+      .then((list) => setNotifications(list.slice(0, 6)))
+      .catch((e) => console.error('[notifications]', e));
+  };
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (user) load(); else setNotifications([]); }, [user?.id]);
 
   useEffect(() => {
     const onClick = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
@@ -17,12 +28,10 @@ const NotificationBell = () => {
 
   if (!isAuthenticated) return null;
 
-  const notifications = getCustomerNotifications(user.email).slice(0, 6);
-
   return (
     <div ref={ref} className="relative hidden sm:block">
       <button
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => { if (!open) load(); setOpen((v) => !v); }}
         aria-label="Notifications"
         className="relative flex h-10 w-10 items-center justify-center rounded-full text-ink-800/70 dark:text-white/70 hover:bg-ink-800/5 dark:hover:bg-white/10 transition"
       >

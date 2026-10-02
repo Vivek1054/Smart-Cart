@@ -1,19 +1,42 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { motion } from 'framer-motion';
 import { FaCheck, FaEyeSlash, FaTrash } from 'react-icons/fa';
 import DataTable from '../components/DataTable';
 import StatusBadge from '../components/StatusBadge';
 import RatingStars from '../../ui/RatingStars';
-import { getReviewsForModeration, setReviewStatus } from '../../data/adminData';
+import { getReviewsForModeration, setReviewStatus, deleteReview } from '../../data/adminData';
+import { refreshCatalog } from '../../data/catalogStore';
+import { useToast } from '../../context/ToastContext';
+import { useAsync } from '../../hooks/useAsync';
+import AsyncBoundary from '../../ui/AsyncBoundary';
 
 const Reviews = () => {
-  const [reviews, setReviews] = useState(getReviewsForModeration);
+  const state = useAsync(getReviewsForModeration, []);
+  return <AsyncBoundary state={state}>{(reviews) => <ReviewsView reviews={reviews} reload={state.reload} />}</AsyncBoundary>;
+};
 
-  const refresh = () => setReviews(getReviewsForModeration());
+const ReviewsView = ({ reviews, reload }) => {
+  const { notify } = useToast();
 
-  const handleStatus = (reviewId, status) => {
-    setReviewStatus(reviewId, status);
-    refresh();
+  // Approved reviews feed the product rating shown in the store, so refresh the catalog too.
+  const handleStatus = async (reviewId, status) => {
+    try {
+      await setReviewStatus(reviewId, status);
+      await refreshCatalog();
+      reload();
+    } catch (err) {
+      notify(err.message, 'error');
+    }
+  };
+
+  const handleDelete = async (reviewId) => {
+    try {
+      await deleteReview(reviewId);
+      await refreshCatalog();
+      reload();
+    } catch (err) {
+      notify(err.message, 'error');
+    }
   };
 
   const avgRating = reviews.length
@@ -58,8 +81,8 @@ const Reviews = () => {
             <FaEyeSlash size={13} />
           </button>
           <button
-            onClick={() => handleStatus(r.id, 'Hidden')}
-            title="Delete (this demo has no real deletion of seed reviews, so this hides the review instead)"
+            onClick={() => handleDelete(r.id)}
+            title="Delete review"
             className="h-8 w-8 flex items-center justify-center rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition"
             aria-label="Delete"
           >

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FaEye, FaEyeSlash, FaEnvelope, FaLock, FaShoppingBasket } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
@@ -10,7 +10,8 @@ import AnimatedSandwich from '../Components/AnimatedSandwich';
 
 const Login = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const location = useLocation();
+  const { login, resetPassword } = useAuth();
   const { notify } = useToast();
 
   const [form, setForm] = useState({ email: '', password: '' });
@@ -29,26 +30,30 @@ const Login = () => {
     return Object.keys(e).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
     setLoading(true);
-    setTimeout(() => {
-      const result = login(form);
-      setLoading(false);
-      if (result.ok) {
-        setSuccess(true);
-        notify('Welcome back!', 'success');
-        setTimeout(() => navigate('/account'), 600);
-      } else {
-        setErrors({ form: result.error });
-      }
-    }, 500);
+    const result = await login(form);
+    setLoading(false);
+    if (result.ok) {
+      setSuccess(true);
+      notify('Welcome back!', 'success');
+      setTimeout(() => navigate(location.state?.from || '/account', { replace: true }), 600);
+    } else {
+      setErrors({ form: result.error });
+    }
   };
 
-  const handleForgotPassword = (e) => {
+  const handleForgotPassword = async (e) => {
     e.preventDefault();
-    notify("Password reset isn't available in this demo.", 'info');
+    if (!/^S+@S+.S+$/.test(form.email)) {
+      setErrors({ email: 'Enter your email above, then click "Forgot password?"' });
+      return;
+    }
+    const result = await resetPassword(form.email);
+    if (result.ok) notify('If that email has an account, a reset link is on its way.', 'success', 5000);
+    else setErrors({ form: result.error });
   };
 
   return (

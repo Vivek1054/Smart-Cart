@@ -9,6 +9,7 @@ const ContactUs = lazy(() => import('./Pages/ContactUs'))
 const Menu = lazy(() => import('./Pages/Menu'))
 const Login = lazy(() => import('./Pages/Login'))
 const Signup = lazy(() => import('./Pages/Signup'))
+const ResetPassword = lazy(() => import('./Pages/ResetPassword'))
 const ProductDetails = lazy(() => import('./Pages/ProductDetails'))
 const Cart = lazy(() => import('./Pages/Cart'))
 const Wishlist = lazy(() => import('./Pages/Wishlist'))
@@ -42,6 +43,7 @@ import { CartProvider } from './context/CartContext'
 import { WishlistProvider } from './context/WishlistContext'
 import { ToastProvider } from './context/ToastContext'
 import { AdminAuthProvider } from './context/AdminAuthContext'
+import { CatalogProvider } from './context/CatalogContext'
 
 const PageLoader = () => (
   <div className="min-h-[70vh] flex items-center justify-center pt-24">
@@ -51,16 +53,17 @@ const PageLoader = () => (
 
 const App = () => {
   const location = useLocation();
-  const hideHeaderFooter = ['/login', '/signup'];
+  const hideHeaderFooter = ['/login', '/signup', '/reset-password'];
   const isAdminRoute = location.pathname.startsWith('/admin');
   const hideChrome = hideHeaderFooter.includes(location.pathname) || isAdminRoute;
 
   return (
     <AuthProvider>
-      <WishlistProvider>
-        <CartProvider>
-          <ToastProvider>
-            <AdminAuthProvider>
+      <ToastProvider>
+        <CatalogProvider>
+          <WishlistProvider>
+            <CartProvider>
+              <AdminAuthProvider>
               <div className='dark:bg-ink-900 dark:text-white min-h-screen bg-cream-50 flex flex-col'>
                 {!hideChrome && <Navbar />}
                 <main className="flex-1">
@@ -77,6 +80,7 @@ const App = () => {
                       <Route path="/account" element={<Account />} />
                       <Route path="/login" element={<Login />} />
                       <Route path="/signup" element={<Signup />} />
+                      <Route path="/reset-password" element={<ResetPassword />} />
 
                       <Route path="/admin/login" element={<AdminLogin />} />
                       <Route path="/admin" element={<AdminLayout />}>
@@ -106,10 +110,11 @@ const App = () => {
                 </main>
                 {!hideChrome && <Footer />}
               </div>
-            </AdminAuthProvider>
-          </ToastProvider>
-        </CartProvider>
-      </WishlistProvider>
+              </AdminAuthProvider>
+            </CartProvider>
+          </WishlistProvider>
+        </CatalogProvider>
+      </ToastProvider>
     </AuthProvider>
   )
 }
