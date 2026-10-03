@@ -416,7 +416,6 @@ const Account = () => {
               <p className="text-sm text-ink-800/60 dark:text-white/60 mb-6">
                 Use the sun/moon icon in the navbar to switch between light and dark mode.
               </p>
-              <h3 className="font-display text-base font-semibold text-ink-900 dark:text-white mb-3">Change password</h3>
               <div className="mb-8">
                 <ChangePasswordForm />
               </div>

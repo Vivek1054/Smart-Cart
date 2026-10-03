@@ -120,7 +120,6 @@ const Settings = () => {
           <Input label="Role" value={admin?.role || ''} readOnly disabled />
         </div>
         <div className="mt-6 pt-6 border-t border-ink-800/10 dark:border-white/10">
-          <h3 className="font-display text-base font-semibold text-ink-900 dark:text-white mb-4">Change password</h3>
           <ChangePasswordForm />
         </div>
       </div>
