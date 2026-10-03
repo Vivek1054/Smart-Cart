@@ -52,5 +52,5 @@ module.exports = {
     },
   },
   darkMode: 'class',
-  plugins: [require("daisyui",'@tailwindcss/forms')],  // enable DaisyUI plugin
+  plugins: [require('daisyui').default({ themes: ['light --default'] })],  // light theme only; dark mode uses the .dark class
 };
