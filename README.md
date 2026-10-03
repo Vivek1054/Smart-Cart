@@ -31,6 +31,8 @@ The frontend (`frontend/`) is deployed on **Vercel** as a static Vite build, wit
 - Multi-address checkout with coupon code support
 - Order history, order status tracking, reorder, and return requests
 - Account management with profile updates and password reset
+- Change password from Account → Settings: verifies the current password, then updates it through Supabase Auth
+- Password requirements enforced in the UI (8+ characters, upper/lower case, number, special character) with a live strength indicator
 
 ### Admin Features
 - Dashboard with aggregated metrics and analytics
@@ -42,6 +44,7 @@ The frontend (`frontend/`) is deployed on **Vercel** as a static Vite build, wit
 
 ### Authentication
 - Full authentication via **Supabase Auth** (sign up, login, logout, password reset)
+- Admins can change their password from the admin Settings page, using the same current-password check
 - A database trigger automatically provisions a `public.profiles` row for every new user
 - Blocked accounts (`profiles.status = 'Blocked'`) are signed out immediately on login
 
@@ -128,6 +131,7 @@ Smart-Cart/
 ## 🔐 Authentication & Authorization
 
 - **Provider:** Supabase Auth handles sign-up, login, logout, and password reset (`supabase.auth.signUp` / `signInWithPassword` / `signOut` / `resetPasswordForEmail`).
+- **Password change:** `frontend/src/services/password.js` verifies the current password with `signInWithPassword`, then calls `updateUser`. Passwords are stored only in Supabase's `auth.users` table as hashes, never in application tables.
 - **Session handling:** The Supabase JS client manages and refreshes the session; the frontend's `AuthContext` mirrors that state (`onAuthStateChange`) for UI purposes only.
 - **Profiles & roles:** A database trigger (`handle_new_user`) creates a matching `public.profiles` row for every new `auth.users` record, holding `role` and `status`.
 - **Role-based access:** `AdminAuthContext` exposes an `isAdmin` flag derived from `profiles.role === 'admin' && status === 'Active'`, used to gate the admin UI (including the `/admin/login` route).
@@ -373,12 +377,14 @@ Based on explicit "not yet implemented" markers in the codebase:
 - **Razorpay payment integration** — the `payments` table and service layer already model provider fields (`provider`, `provider_order_id`, `provider_payment_id`), but the actual payment gateway integration (webhook using the service-role key) has not been built yet. COD orders are currently auto-marked `Paid` on delivery; card/UPI orders remain `Pending` until this is implemented.
 - Automated frontend test coverage.
 - CI/CD automation (no GitHub Actions workflows currently exist in this repository).
+- **Email-code (OTP) password change:** the Account and admin Settings pages show an OTP option, but it is not complete. Supabase checks the emailed code only if the session is older than 24 hours, so a recent login can change the password without it. A proper verify-then-update flow needs custom SMTP and a template that includes the code. Until then, use the current-password method.
+- **Custom SMTP:** reset and verification emails use Supabase's default sender, which has low rate limits. Configure custom SMTP before launching to real customers.
 
 ---
 
 ## 📄 License
 
-No license file is currently included in this repository. All rights reserved by the author unless a license is added.
+This project is licensed under the [MIT License](LICENSE).
 
 ## 👤 Author
 
