@@ -12,6 +12,7 @@ import { getOrdersForUser, getReturnsForUser, requestReturn, TRACKING_STEPS } fr
 import { getAddresses, addAddress as saveNewAddress, updateAddress, deleteAddress } from '../data/addresses';
 import { friendlyError } from '../lib/errors';
 import ProductCard from '../Components/ProductCard';
+import ChangePasswordForm from '../Components/ChangePasswordForm';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
 
@@ -415,6 +416,10 @@ const Account = () => {
               <p className="text-sm text-ink-800/60 dark:text-white/60 mb-6">
                 Use the sun/moon icon in the navbar to switch between light and dark mode.
               </p>
+              <h3 className="font-display text-base font-semibold text-ink-900 dark:text-white mb-3">Change password</h3>
+              <div className="mb-8">
+                <ChangePasswordForm />
+              </div>
               <Button variant="danger" onClick={handleLogout}>Logout</Button>
             </div>
           )}

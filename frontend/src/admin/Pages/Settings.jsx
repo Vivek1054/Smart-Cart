@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { FaSun, FaMoon, FaDesktop, FaStore, FaUserCircle, FaPalette } from 'react-icons/fa';
 import Input from '../../ui/Input';
 import Button from '../../ui/Button';
+import ChangePasswordForm from '../../Components/ChangePasswordForm';
 import { useToast } from '../../context/ToastContext';
 import { useAdminAuth } from '../../context/AdminAuthContext';
 import { getStoreSettings, saveStoreSettings } from '../../data/promotions';
@@ -117,6 +118,10 @@ const Settings = () => {
           <Input label="Name" value={admin?.name || ''} readOnly disabled />
           <Input label="Email" value={admin?.email || ''} readOnly disabled />
           <Input label="Role" value={admin?.role || ''} readOnly disabled />
+        </div>
+        <div className="mt-6 pt-6 border-t border-ink-800/10 dark:border-white/10">
+          <h3 className="font-display text-base font-semibold text-ink-900 dark:text-white mb-4">Change password</h3>
+          <ChangePasswordForm />
         </div>
       </div>
 
