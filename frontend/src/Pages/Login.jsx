@@ -47,7 +47,7 @@ const Login = () => {
 
   const handleForgotPassword = async (e) => {
     e.preventDefault();
-    if (!/^S+@S+.S+$/.test(form.email)) {
+    if (!/^\S+@\S+\.\S+$/.test(form.email)) {
       setErrors({ email: 'Enter your email above, then click "Forgot password?"' });
       return;
     }

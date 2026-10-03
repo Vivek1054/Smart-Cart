@@ -2,7 +2,7 @@
 
 Smart-Cart is a full-stack e-commerce platform with a React storefront, a hardened Express REST API, and a Supabase (Postgres) backend where authorization is enforced at the database layer via Row-Level Security — not just in application code. It covers the full customer journey (browsing, cart, wishlist, checkout, orders, returns) alongside a parallel admin console for managing products, orders, customers, coupons, and analytics.
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-smart--cart--site.vercel.app-000000?logo=vercel&logoColor=white)](https://smart-cart-site.vercel.app/)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-smart--cart--fastfood.vercel.app-000000?logo=vercel&logoColor=white)](https://smart-cart-fastfood.vercel.app/)
 [![GitHub](https://img.shields.io/badge/GitHub-Vivek1054%2FSmart--Cart-181717?logo=github&logoColor=white)](https://github.com/Vivek1054/Smart-Cart)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-6-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
@@ -15,7 +15,8 @@ Smart-Cart is a full-stack e-commerce platform with a React storefront, a harden
 
 ## 🚀 Live Demo
 
-**Live Application:** **[https://smart-cart-site.vercel.app/](https://smart-cart-site.vercel.app/)**
+**Live Application:** **[https://smart-cart-fastfood.vercel.app/](https://smart-cart-fastfood.vercel.app/)**
+**Live Backend API:** [https://smart-cart-draw.onrender.com/api/health](https://smart-cart-draw.onrender.com/api/health)
 
 The frontend (`frontend/`) is deployed on **Vercel** as a static Vite build, with `frontend/vercel.json` providing the SPA rewrite rule needed for client-side routing to survive page refreshes and direct navigation.
 
@@ -315,8 +316,8 @@ npm run dev               # http://localhost:5173
 
 | Service | Platform | Notes |
 |---|---|---|
-| Frontend | **Vercel** — live at [smart-cart-site.vercel.app](https://smart-cart-site.vercel.app/) | `frontend/vercel.json` provides the SPA rewrite so client-side routes survive refresh/direct navigation |
-| Backend | **Render** (per project docs) | Root directory `backend`, build `npm install`, start `npm start`, health check path `/api/health` |
+| Frontend | **Vercel** — live at [smart-cart-fastfood.vercel.app](https://smart-cart-fastfood.vercel.app/) | `frontend/vercel.json` provides the SPA rewrite so client-side routes survive refresh/direct navigation |
+| Backend | **Render** — live at [smart-cart-draw.onrender.com](https://smart-cart-draw.onrender.com/api/health) | Root directory `backend`, build `npm install`, start `npm start`, health check path `/api/health` |
 | Database | **Supabase Cloud** | Hosted Postgres + Auth + RLS |
 
 Deploy steps (from [`backend/README.md`](backend/README.md)):
