@@ -139,6 +139,25 @@ Smart-Cart/
 - **Real enforcement is in the database:** Every query — whether issued directly by the frontend or proxied through the Express API — runs through a Supabase client scoped to that user's JWT, so Postgres Row-Level Security applies independently of the application layer. As the codebase itself documents: *"Roles are enforced by the database (RLS), not by this UI state."*
 - There is no in-app admin signup flow — the first admin is promoted manually via SQL against `public.profiles`.
 
+### Roles & Access Control
+
+SmartCart uses **role-based access control (RBAC)** with two roles, combined with **ownership checks** on user data.
+
+| Role | Who | Access |
+|---|---|---|
+| `customer` | Any signed-up user (default) | Browse the catalog; manage their own cart, wishlist, addresses, orders, returns, and reviews |
+| `admin` | Accounts promoted by a database administrator | Everything a customer can do, plus the admin console and all admin API routes |
+
+Access is enforced in three layers, with the database as the authority:
+
+1. **Database (Row-Level Security):** policies call `is_admin()` and check `auth.uid()` ownership on every table.
+2. **Backend:** `requireAuth` verifies the token and loads the role and status from `profiles`; `requireAdmin` restricts `/api/v1/admin/*`.
+3. **Frontend:** `AdminAuthContext` and route guards hide admin screens. This is for display only.
+
+Blocked accounts (`status = 'Blocked'`) are rejected at login and by the API.
+
+**Limitations:** there are no granular permissions (for example, "can refund" or "can edit prices" as separate rights), and any admin can currently promote another user to admin. See the roadmap below.
+
 ---
 
 ## 🔌 API
@@ -375,6 +394,8 @@ Deploy steps (from [`backend/README.md`](backend/README.md)):
 Based on explicit "not yet implemented" markers in the codebase:
 
 - **Razorpay payment integration** — the `payments` table and service layer already model provider fields (`provider`, `provider_order_id`, `provider_payment_id`), but the actual payment gateway integration (webhook using the service-role key) has not been built yet. COD orders are currently auto-marked `Paid` on delivery; card/UPI orders remain `Pending` until this is implemented.
+- **Finer-grained RBAC:** additional roles (such as orders-only staff) with per-permission checks, and restricting admin promotion to a designated super-admin. Both would be enforced in the database policies.
+- **Audit log** for role, status, and order changes.
 - Automated frontend test coverage.
 - CI/CD automation (no GitHub Actions workflows currently exist in this repository).
 - **Email-code (OTP) password change:** the Account and admin Settings pages show an OTP option, but it is not complete. Supabase checks the emailed code only if the session is older than 24 hours, so a recent login can change the password without it. A proper verify-then-update flow needs custom SMTP and a template that includes the code. Until then, use the current-password method.
