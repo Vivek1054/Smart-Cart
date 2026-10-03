@@ -5,7 +5,7 @@ import { useToast } from '../context/ToastContext';
 import { changePassword, sendPasswordOtp, verifyCurrentPassword } from '../services/password';
 import Button from '../ui/Button';
 
-const OTP_LENGTH = 6;
+const OTP_LENGTH = 8;
 const RESEND_SECONDS = 30;
 
 const REQUIREMENTS = [
@@ -145,7 +145,7 @@ const OtpInputs = ({ values, onChange, disabled }) => {
   };
 
   return (
-    <div className="flex gap-2 sm:gap-3" role="group" aria-label="6-digit verification code">
+    <div className="flex gap-1.5 sm:gap-2" role="group" aria-label="8-digit verification code">
       {values.map((v, i) => (
         <input
           key={i}
@@ -160,7 +160,7 @@ const OtpInputs = ({ values, onChange, disabled }) => {
           onKeyDown={(e) => handleKeyDown(i, e)}
           onPaste={handlePaste}
           onFocus={(e) => e.target.select()}
-          className="w-11 h-12 sm:w-12 sm:h-14 text-center text-lg font-semibold rounded-xl border border-ink-800/10 dark:border-white/15 bg-cream-50 dark:bg-white/5 dark:text-white transition focus:outline-none focus:ring-2 focus:border-brand-400 focus:ring-brand-200 dark:focus:ring-brand-900 disabled:opacity-50"
+          className="w-8 h-11 sm:w-10 sm:h-12 text-center text-base sm:text-lg font-semibold rounded-xl border border-ink-800/10 dark:border-white/15 bg-cream-50 dark:bg-white/5 dark:text-white transition focus:outline-none focus:ring-2 focus:border-brand-400 focus:ring-brand-200 dark:focus:ring-brand-900 disabled:opacity-50"
         />
       ))}
     </div>
@@ -291,7 +291,7 @@ const OtpPanel = ({ email, onDone }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const next = {};
-    if (!otpComplete) next.form = 'Enter the 6-digit code.';
+    if (!otpComplete) next.form = 'Enter the 8-digit code.';
     if (!form.password) next.password = 'Enter a new password.';
     else if (!isStrong(form.password)) next.password = 'Your new password does not meet all the requirements below.';
     if (!form.confirm) next.confirm = 'Confirm your new password.';
@@ -338,7 +338,7 @@ const OtpPanel = ({ email, onDone }) => {
     <form onSubmit={handleSubmit} noValidate className="space-y-5">
       <div>
         <p className="text-sm font-semibold text-ink-800/80 dark:text-white/80">Enter OTP</p>
-        <p className="text-xs text-ink-800/60 dark:text-white/60 mt-0.5 mb-3">Enter the 6-digit code sent to your email.</p>
+        <p className="text-xs text-ink-800/60 dark:text-white/60 mt-0.5 mb-3">Enter the 8-digit code sent to your email.</p>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <OtpInputs values={otp} onChange={(next) => { setOtp(next); setErrors((p) => ({ ...p, form: undefined })); }} disabled={loading} />
           <p className="text-xs text-ink-800/60 dark:text-white/60">
@@ -361,7 +361,7 @@ const OtpPanel = ({ email, onDone }) => {
           <Button type="submit" loading={loading} className="w-full" size="md">Update password</Button>
         </div>
       ) : (
-        <p className="text-xs text-ink-800/50 dark:text-white/50">Enter all 6 digits to set a new password.</p>
+        <p className="text-xs text-ink-800/50 dark:text-white/50">Enter all 8 digits to set a new password.</p>
       )}
     </form>
   );
